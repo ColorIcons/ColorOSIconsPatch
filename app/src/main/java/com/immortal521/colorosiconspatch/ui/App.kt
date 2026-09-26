@@ -6,8 +6,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +34,7 @@ fun App() {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (!showWelcome) {
                 MainNavigationBar(
@@ -57,10 +60,14 @@ fun App() {
             enter = fadeIn(),
             exit = fadeOut()
         ) {
+            val mainContentPadding = PaddingValues(
+                bottom = innerPadding.calculateBottomPadding()
+            )
+
             when (selectedTab) {
-                0 -> HomeScreen(Modifier.padding(innerPadding))
-                1 -> AppsScreen(Modifier.padding(innerPadding))
-                2 -> SettingsScreen(Modifier.padding(innerPadding))
+                0 -> HomeScreen(contentPadding = mainContentPadding)
+                1 -> AppsScreen(contentPadding = mainContentPadding)
+                2 -> SettingsScreen(contentPadding = mainContentPadding)
             }
         }
     }

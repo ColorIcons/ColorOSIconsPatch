@@ -2,7 +2,7 @@ package com.immortal521.colorosiconspatch.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -11,36 +11,51 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun AppsScreen(modifier: Modifier = Modifier) {
-    PlaceholderScreen(
-        modifier = modifier,
+fun AppsScreen(
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues()
+) {
+    MainScreenScaffold(
         title = "应用",
-        message = "已安装应用将在这里显示"
-    )
+        contentPadding = contentPadding,
+        modifier = modifier
+    ) { contentModifier ->
+        PlaceholderContent(
+            modifier = contentModifier,
+            message = "已安装应用将在这里显示"
+        )
+    }
 }
 
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
-    PlaceholderScreen(
-        modifier = modifier,
+fun SettingsScreen(
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues()
+) {
+    MainScreenScaffold(
         title = "设置",
-        message = "应用设置将在这里显示"
-    )
+        contentPadding = contentPadding,
+        modifier = modifier
+    ) { contentModifier ->
+        PlaceholderContent(
+            modifier = contentModifier,
+            message = "应用设置将在这里显示"
+        )
+    }
 }
 
 @Composable
-private fun PlaceholderScreen(
+private fun PlaceholderContent(
     modifier: Modifier,
-    title: String,
     message: String
 ) {
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall)
-        Text(message)
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }
