@@ -30,7 +30,7 @@ fun AppsScreen(
         modifier = modifier,
         scrollable = false
     ) { contentModifier ->
-        when (val appList = apps) {
+        when (apps) {
             null -> Text(
                 text = "正在加载应用…",
                 modifier = contentModifier.padding(horizontal = 24.dp, vertical = 16.dp)
@@ -39,7 +39,7 @@ fun AppsScreen(
                 modifier = contentModifier,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                items(appList, key = { it.packageName }) { app ->
+                items(apps, key = { it.packageName }) { app ->
                     AppRow(app)
                     HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
                 }

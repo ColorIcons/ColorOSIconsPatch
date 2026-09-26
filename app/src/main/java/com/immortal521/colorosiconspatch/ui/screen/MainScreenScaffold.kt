@@ -26,9 +26,9 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreenScaffold(
+    modifier: Modifier = Modifier,
     title: String,
     contentPadding: PaddingValues = PaddingValues(),
-    modifier: Modifier = Modifier,
     scrollable: Boolean = true,
     content: @Composable (Modifier) -> Unit
 ) {
