@@ -33,6 +33,7 @@ fun MainScreenScaffold(
     scrollable: Boolean = true,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
+    topBarContent: @Composable (() -> Unit)? = null,
     content: @Composable (Modifier) -> Unit
 ) {
     val topAppBarState = rememberTopAppBarState()
@@ -50,14 +51,28 @@ fun MainScreenScaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentWindowInsets = pageInsets,
         topBar = {
-            LargeFlexibleTopAppBar(
-                title = { Text(title) },
-                navigationIcon = navigationIcon,
-                actions = actions,
-                colors = topBarColors,
-                windowInsets = pageInsets,
-                scrollBehavior = scrollBehavior
-            )
+            if (topBarContent == null) {
+                LargeFlexibleTopAppBar(
+                    title = { Text(title) },
+                    navigationIcon = navigationIcon,
+                    actions = actions,
+                    colors = topBarColors,
+                    windowInsets = pageInsets,
+                    scrollBehavior = scrollBehavior
+                )
+            } else {
+                Column {
+                    LargeFlexibleTopAppBar(
+                        title = { Text(title) },
+                        navigationIcon = navigationIcon,
+                        actions = actions,
+                        colors = topBarColors,
+                        windowInsets = pageInsets,
+                        scrollBehavior = scrollBehavior
+                    )
+                    topBarContent()
+                }
+            }
         }
     ) { innerPadding: PaddingValues ->
         val contentModifier = Modifier

@@ -10,7 +10,9 @@ data class InstalledApp(
     val label: String,
     val packageName: String,
     val icon: androidx.compose.ui.graphics.ImageBitmap,
-    val isAdapted: Boolean = false
+    val isAdapted: Boolean = false,
+    val isSystem: Boolean = false,
+    val userId: Int = 0
 )
 
 fun loadInstalledApps(
@@ -32,7 +34,10 @@ fun loadInstalledApps(
                 label = applicationInfo.loadLabel(packageManager).toString(),
                 packageName = applicationInfo.packageName,
                 icon = applicationInfo.loadIcon(packageManager).toBitmap().asImageBitmap(),
-                isAdapted = applicationInfo.packageName in adaptedPackages
+                isAdapted = applicationInfo.packageName in adaptedPackages,
+                isSystem = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0 ||
+                    applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0,
+                userId = applicationInfo.uid / 100000
             )
         }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })

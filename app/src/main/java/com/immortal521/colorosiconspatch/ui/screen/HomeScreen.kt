@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -38,6 +39,7 @@ import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.RootImplementation
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
@@ -126,8 +128,10 @@ private fun RootStatusCard(
     ) {
         ListItem(
             leadingContent = { Icon(icon, contentDescription = title) },
-            headlineContent = { Text(title, style = MaterialTheme.typography.titleMedium) },
-            supportingContent = { Text(summary) },
+            content = { Text(title, style = MaterialTheme.typography.titleMediumEmphasized) },
+            supportingContent = {
+                Text(summary, style = MaterialTheme.typography.bodyMedium)
+            },
             trailingContent = {
                 StatusPill(
                     text = if (ready) "已就绪" else "需处理",
@@ -156,8 +160,13 @@ private fun IconSyncCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-        )
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.contentColorFor(
+                MaterialTheme.colorScheme.tertiaryContainer
+            )
+        ),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation()
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -165,7 +174,7 @@ private fun IconSyncCard(
         ) {
             when {
                 syncing && progress != null -> {
-                    Text("正在更新图标资源", style = MaterialTheme.typography.titleMedium)
+                    Text("正在更新图标资源", style = MaterialTheme.typography.titleMediumEmphasized)
                     Text(progress.currentApp ?: "准备中", style = MaterialTheme.typography.bodyMedium)
                     progress.currentFile?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall)
@@ -185,7 +194,7 @@ private fun IconSyncCard(
                 }
                 plan == null -> Text("正在检查图标资源差异…")
                 else -> {
-                    Text("发现 ${plan.affectedApps} 个应用有资源差异", style = MaterialTheme.typography.titleMedium)
+                    Text("发现 ${plan.affectedApps} 个应用有资源差异", style = MaterialTheme.typography.titleMediumEmphasized)
                     Text(
                         "${plan.updates.size} 个文件需要下载，${plan.staleFiles.size} 个文件需要删除 · ${formatBytes(plan.totalBytes)}",
                         style = MaterialTheme.typography.bodyMedium
@@ -212,33 +221,18 @@ private fun SystemInfoCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
+            containerColor = MaterialTheme.colorScheme.surfaceBright
+        ),
+        shape = MaterialTheme.shapes.large
     ) {
         Column(
             modifier = Modifier.padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            InfoCardItem(
-                icon = Icons.Filled.Tag,
-                label = "Android",
-                content = androidVersion
-            )
-            InfoCardItem(
-                icon = Icons.Filled.Security,
-                label = "安全补丁",
-                content = securityPatch
-            )
-            InfoCardItem(
-                icon = Icons.Filled.Smartphone,
-                label = "设备型号",
-                content = deviceModel
-            )
-            InfoCardItem(
-                icon = Icons.Filled.DeveloperBoard,
-                label = "Kernel",
-                content = kernelVersion
-            )
+            InfoCardItem(Icons.Filled.Tag, "Android", androidVersion)
+            InfoCardItem(Icons.Filled.Security, "安全补丁", securityPatch)
+            InfoCardItem(Icons.Filled.Smartphone, "设备型号", deviceModel)
+            InfoCardItem(Icons.Filled.DeveloperBoard, "Kernel", kernelVersion)
         }
     }
 }
@@ -249,25 +243,29 @@ private fun InfoCardItem(
     label: String,
     content: String
 ) {
-    ListItem(
-        leadingContent = {
-            Icon(imageVector = icon, contentDescription = label)
-        },
-        headlineContent = {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-        },
-        supportingContent = {
-            Text(
-                content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent
-        ),
-        modifier = Modifier.fillMaxWidth()
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = content,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Composable
