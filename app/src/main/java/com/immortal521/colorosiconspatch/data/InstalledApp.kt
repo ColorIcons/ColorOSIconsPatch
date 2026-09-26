@@ -1,7 +1,7 @@
 package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
-import android.content.Intent
+import android.content.pm.ApplicationInfo
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 
@@ -20,13 +20,14 @@ fun loadInstalledApps(
     val packageManager = context.packageManager
     val ownPackage = context.packageName
 
-    val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-
     return packageManager
-        .queryIntentActivities(launcherIntent, 0)
+        .getInstalledApplications(
+            android.content.pm.PackageManager.ApplicationInfoFlags.of(
+                android.content.pm.PackageManager.MATCH_ALL.toLong()
+            )
+        )
         .asSequence()
-        .map { it.activityInfo.applicationInfo }
-        .filter { it.packageName != ownPackage }
+        .filter { it.packageName != ownPackage && it.enabled }
         .distinctBy { it.packageName }
         .map { applicationInfo ->
             InstalledApp(

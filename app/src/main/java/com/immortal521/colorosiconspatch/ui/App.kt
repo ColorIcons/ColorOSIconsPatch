@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.data.InstalledApp
 import com.immortal521.colorosiconspatch.data.loadIconIndex
+import com.immortal521.colorosiconspatch.data.syncIconResources
 import com.immortal521.colorosiconspatch.data.loadInstalledApps
 import com.immortal521.colorosiconspatch.ui.navigation.MainNavigationBar
 import com.immortal521.colorosiconspatch.ui.onboarding.InitializationFlow
@@ -53,8 +54,18 @@ private fun MainContent() {
                 loadIconIndex(context)
             }
             iconIndexError = index.error
-            installedApps = withContext(Dispatchers.IO) {
+            val apps = withContext(Dispatchers.IO) {
                 loadInstalledApps(context, index.adaptedPackages)
+            }
+            installedApps = apps
+            launch {
+                withContext(Dispatchers.IO) {
+                    syncIconResources(
+                        context = context,
+                        installedPackages = apps.mapTo(mutableSetOf()) { it.packageName },
+                        index = index
+                    )
+                }
             }
         }
     }
