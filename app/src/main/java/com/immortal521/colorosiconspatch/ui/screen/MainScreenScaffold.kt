@@ -1,8 +1,9 @@
 package com.immortal521.colorosiconspatch.ui.screen
 
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -28,6 +29,7 @@ fun MainScreenScaffold(
     title: String,
     contentPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier,
+    scrollable: Boolean = true,
     content: @Composable (Modifier) -> Unit
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
@@ -55,15 +57,22 @@ fun MainScreenScaffold(
             )
         }
     ) { innerPadding: PaddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(contentPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            content(Modifier)
+        val contentModifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+            .padding(contentPadding)
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+
+        if (scrollable) {
+            Column(
+                modifier = contentModifier.verticalScroll(rememberScrollState())
+            ) {
+                content(Modifier)
+            }
+        } else {
+            Box(modifier = contentModifier) {
+                content(Modifier.fillMaxSize())
+            }
         }
     }
 }
