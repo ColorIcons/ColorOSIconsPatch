@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ColorOS Icons Patch</string>
+    <string name="xposed_description">Refresh ColorOS launcher icons after applying icon resources.</string>
 </resources>

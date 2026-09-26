@@ -12,15 +12,18 @@ import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -28,6 +31,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,8 +55,10 @@ fun HomeScreen(
     progress: IconSyncProgress? = null,
     syncing: Boolean = false,
     error: String? = null,
-    onSync: () -> Unit = {}
+    onSync: () -> Unit = {},
+    onRefreshLauncher: () -> Unit = {}
 ) {
+    var showRefreshConfirmation by remember { mutableStateOf(false) }
     val environment = loadEnvironmentCheck(LocalContext.current)
     val androidVersion = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
     val securityPatch = Build.VERSION.SECURITY_PATCH.ifBlank { "未知" }
@@ -59,7 +68,12 @@ fun HomeScreen(
     MainScreenScaffold(
         title = "ColorOS Icons Patch",
         contentPadding = contentPadding,
-        modifier = modifier
+        modifier = modifier,
+        actions = {
+            IconButton(onClick = { showRefreshConfirmation = true }) {
+                Icon(Icons.Rounded.Refresh, contentDescription = "刷新桌面图标")
+            }
+        }
     ) { contentModifier ->
         Column(
             modifier = contentModifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -88,6 +102,29 @@ fun HomeScreen(
                 kernelVersion = kernelVersion
             )
         }
+    }
+
+    if (showRefreshConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showRefreshConfirmation = false },
+            title = { Text("刷新桌面图标") },
+            text = { Text("确定要刷新桌面图标吗？") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRefreshConfirmation = false
+                        onRefreshLauncher()
+                    }
+                ) {
+                    Text("刷新")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showRefreshConfirmation = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
@@ -255,16 +292,20 @@ private fun InfoCardItem(
             contentDescription = label,
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = content,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
