@@ -21,6 +21,7 @@ import com.immortal521.colorosiconspatch.data.InstalledApp
 @Composable
 fun AppsScreen(
     apps: List<InstalledApp>?,
+    indexError: String? = null,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues()
 ) {
@@ -39,6 +40,16 @@ fun AppsScreen(
                 modifier = contentModifier,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
+                item {
+                    indexError?.let {
+                        Text(
+                            text = it,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.tertiary,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
                 items(apps, key = { it.packageName }) { app ->
                     AppRow(app)
                     HorizontalDivider(modifier = Modifier.padding(start = 72.dp))

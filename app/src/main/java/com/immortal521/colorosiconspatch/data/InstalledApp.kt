@@ -13,7 +13,10 @@ data class InstalledApp(
     val isAdapted: Boolean = false
 )
 
-fun loadInstalledApps(context: Context): List<InstalledApp> {
+fun loadInstalledApps(
+    context: Context,
+    adaptedPackages: Set<String> = emptySet()
+): List<InstalledApp> {
     val packageManager = context.packageManager
     val ownPackage = context.packageName
 
@@ -29,7 +32,8 @@ fun loadInstalledApps(context: Context): List<InstalledApp> {
             InstalledApp(
                 label = applicationInfo.loadLabel(packageManager).toString(),
                 packageName = applicationInfo.packageName,
-                icon = applicationInfo.loadIcon(packageManager).toBitmap().asImageBitmap()
+                icon = applicationInfo.loadIcon(packageManager).toBitmap().asImageBitmap(),
+                isAdapted = applicationInfo.packageName in adaptedPackages
             )
         }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })

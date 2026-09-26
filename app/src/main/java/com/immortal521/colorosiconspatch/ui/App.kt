@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.data.InstalledApp
+import com.immortal521.colorosiconspatch.data.loadIconIndex
 import com.immortal521.colorosiconspatch.data.loadInstalledApps
 import com.immortal521.colorosiconspatch.ui.navigation.MainNavigationBar
 import com.immortal521.colorosiconspatch.ui.onboarding.InitializationFlow
@@ -44,11 +45,16 @@ private fun MainContent() {
     val pagerState = rememberPagerState(initialPage = selectedTab) { 3 }
     val pagerScope = rememberCoroutineScope()
     var installedApps by remember { mutableStateOf<List<InstalledApp>?>(null) }
+    var iconIndexError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(pagerState.settledPage) {
         if (pagerState.settledPage == 1 && installedApps == null) {
+            val index = withContext(Dispatchers.IO) {
+                loadIconIndex(context)
+            }
+            iconIndexError = index.error
             installedApps = withContext(Dispatchers.IO) {
-                loadInstalledApps(context)
+                loadInstalledApps(context, index.adaptedPackages)
             }
         }
     }
@@ -88,6 +94,7 @@ private fun MainContent() {
                 0 -> HomeScreen(contentPadding = mainContentPadding)
                 1 -> AppsScreen(
                     apps = installedApps,
+                    indexError = iconIndexError,
                     contentPadding = mainContentPadding
                 )
                 2 -> SettingsScreen(contentPadding = mainContentPadding)
