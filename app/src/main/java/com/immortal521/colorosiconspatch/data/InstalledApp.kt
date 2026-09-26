@@ -1,7 +1,7 @@
 package com.immortal521.colorosiconspatch.data
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 
@@ -22,9 +22,7 @@ fun loadInstalledApps(
 
     return packageManager
         .getInstalledApplications(
-            android.content.pm.PackageManager.ApplicationInfoFlags.of(
-                android.content.pm.PackageManager.MATCH_ALL.toLong()
-            )
+            android.content.pm.PackageManager.ApplicationInfoFlags.of(0L)
         )
         .asSequence()
         .filter { it.packageName != ownPackage && it.enabled }

@@ -5,6 +5,7 @@ import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import androidx.core.content.edit
 
 enum class CheckStatus {
     UNKNOWN,
@@ -61,20 +62,20 @@ suspend fun checkRoot(context: Context): CheckStatus = withContext(Dispatchers.I
         CheckStatus.FAILED
     }
     context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-        .edit()
-        .putString(ROOT_STATUS, status.name)
-        .putString(ROOT_IMPLEMENTATION, implementation.name)
-        .putString(SUSFS_STATUS, susfs.name)
-        .apply()
+        .edit {
+            putString(ROOT_STATUS, status.name)
+                .putString(ROOT_IMPLEMENTATION, implementation.name)
+                .putString(SUSFS_STATUS, susfs.name)
+        }
     status
 }
 
 suspend fun checkModule(context: Context): CheckStatus = withContext(Dispatchers.IO) {
     val status = if (moduleExists(MODULE_ID)) CheckStatus.PASSED else CheckStatus.FAILED
     context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-        .edit()
-        .putString(MODULE_STATUS, status.name)
-        .apply()
+        .edit {
+            putString(MODULE_STATUS, status.name)
+        }
     status
 }
 

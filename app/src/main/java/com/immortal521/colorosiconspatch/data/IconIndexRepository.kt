@@ -5,6 +5,12 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val INDEX_URL = "https://immortal521.github.io/icons/index.json"
 private const val INDEX_CACHE = "icon-index.json"
@@ -16,7 +22,8 @@ private const val PERSISTENT_ICONS = "/data/adb/colorosiconspatch/uxicons"
 data class IconFile(
     val name: String,
     val path: String,
-    val sha256: String
+    val sha256: String,
+    val size: Long
 )
 
 data class IconPackage(
@@ -26,6 +33,7 @@ data class IconPackage(
 
 data class IconIndexLoadResult(
     val packages: Map<String, IconPackage>,
+    val requiredFiles: List<IconFile> = emptyList(),
     val error: String? = null
 ) {
     val adaptedPackages: Set<String>
@@ -37,15 +45,26 @@ fun loadIconIndex(context: Context): IconIndexLoadResult {
     return try {
         val json = downloadIndex()
         cache.writeText(json)
-        IconIndexLoadResult(parsePackages(json))
+        parseIndex(json).let { (requiredFiles, packages) ->
+            IconIndexLoadResult(
+                packages = packages,
+                requiredFiles = requiredFiles
+            )
+        }
     } catch (_: Exception) {
         if (!cache.isFile) {
-            IconIndexLoadResult(emptyMap(), "图标索引读取失败")
+            IconIndexLoadResult(emptyMap(), error = "图标索引读取失败")
         } else {
             try {
-                IconIndexLoadResult(parsePackages(cache.readText()), "在线索引读取失败，当前使用缓存")
+                parseIndex(cache.readText()).let { (requiredFiles, packages) ->
+                    IconIndexLoadResult(
+                        packages = packages,
+                        requiredFiles = requiredFiles,
+                        error = "在线索引读取失败，当前使用缓存"
+                    )
+                }
             } catch (_: Exception) {
-                IconIndexLoadResult(emptyMap(), "图标索引读取失败")
+                IconIndexLoadResult(emptyMap(), error = "图标索引读取失败")
             }
         }
     }
@@ -65,9 +84,13 @@ private fun downloadIndex(): String {
     }
 }
 
-private fun parsePackages(json: String): Map<String, IconPackage> {
-    val packages = JSONObject(json).getJSONObject("packages")
-    return buildMap {
+private fun parseIndex(json: String): Pair<List<IconFile>, Map<String, IconPackage>> {
+    val root = JSONObject(json)
+    val requiredFiles = buildList {
+        addFiles(root.optJSONArray("required_files"))
+    }
+    val packages = root.getJSONObject("packages")
+    val packageMap = buildMap {
         val packageKeys = packages.keys()
         while (packageKeys.hasNext()) {
             val packageName = packageKeys.next()
@@ -83,6 +106,7 @@ private fun parsePackages(json: String): Map<String, IconPackage> {
             if (files.isNotEmpty()) put(packageName, IconPackage(packageName, files.distinctBy { it.name }))
         }
     }
+    return requiredFiles to packageMap
 }
 
 private fun MutableList<IconFile>.addFiles(array: org.json.JSONArray?) {
@@ -93,48 +117,136 @@ private fun MutableList<IconFile>.addFiles(array: org.json.JSONArray?) {
             IconFile(
                 name = file.getString("file"),
                 path = file.getString("path"),
-                sha256 = file.getString("sha256")
+                sha256 = file.getString("sha256"),
+                size = file.optLong("size", 0L)
             )
         )
     }
 }
 
-suspend fun syncIconResources(
-    context: Context,
-    installedPackages: Set<String>,
-    index: IconIndexLoadResult
-): IconSyncResult {
-    val filesToKeep = mutableSetOf<String>()
-    var downloaded = 0
-    var skipped = 0
-
-    for (packageName in installedPackages.intersect(index.packages.keys)) {
-        val iconPackage = index.packages.getValue(packageName)
-        for (iconFile in iconPackage.files) {
-            val target = "$PERSISTENT_ICONS/$packageName/${iconFile.name}"
-            filesToKeep += target
-            if (remoteFileMatches(target, iconFile.sha256)) {
-                skipped++
-                continue
-            }
-            val temporary = File(context.cacheDir, "icon-$packageName-${iconFile.name}")
-            downloadFile(iconFile.path, temporary)
-            check(sha256(temporary) == iconFile.sha256) { "图标校验失败：${iconFile.path}" }
-            installRootFile(temporary, target)
-            temporary.delete()
-            downloaded++
-        }
-    }
-
-    removeStaleRootFiles(filesToKeep, installedPackages)
-    return IconSyncResult(downloaded, skipped)
+data class IconSyncPlan(
+    val updates: List<IconFileUpdate>,
+    val staleFiles: List<String>
+) {
+    val totalChanges: Int get() = updates.size + staleFiles.size
+    val totalBytes: Long get() = updates.sumOf { it.file.size }
+    val affectedApps: Int
+        get() = (updates.map { it.packageName } + staleFiles.map {
+            it.substringAfter(PERSISTENT_ICONS).trimStart('/').substringBefore('/')
+        })
+            .filter(String::isNotBlank)
+            .distinct()
+            .size
 }
 
-data class IconSyncResult(val downloaded: Int, val skipped: Int)
+data class IconFileUpdate(
+    val packageName: String,
+    val file: IconFile,
+    val target: String,
+    val size: Long
+)
 
-private fun remoteFileMatches(path: String, sha256: String): Boolean {
-    val result = runRoot("sha256sum ${shellQuote(path)}")
-    return result.first == 0 && result.second.trim().startsWith(sha256)
+data class IconSyncProgress(
+    val completedApps: Int,
+    val totalApps: Int,
+    val currentApp: String? = null,
+    val currentFile: String? = null
+)
+
+data class IconSyncResult(val downloaded: Int, val removed: Int)
+
+suspend fun buildIconSyncPlan(
+    installedPackages: Set<String>,
+    index: IconIndexLoadResult
+): IconSyncPlan {
+    val keep = mutableSetOf<String>()
+    val checksums = readLocalChecksums()
+    val updates = buildList {
+        for (requiredFile in index.requiredFiles) {
+            val target = "$PERSISTENT_ICONS/${requiredFile.name}"
+            keep += target
+            if (checksums[target] != requiredFile.sha256) {
+                add(IconFileUpdate(REQUIRED_PACKAGE, requiredFile, target, requiredFile.size))
+            }
+        }
+        for (packageName in installedPackages.intersect(index.packages.keys)) {
+            for (iconFile in index.packages.getValue(packageName).files) {
+                val target = "$PERSISTENT_ICONS/$packageName/${iconFile.name}"
+                keep += target
+                if (checksums[target] != iconFile.sha256) {
+                    add(IconFileUpdate(packageName, iconFile, target, iconFile.size))
+                }
+            }
+        }
+    }
+    return IconSyncPlan(updates, (checksums.keys - keep).toList())
+}
+
+suspend fun syncIconResources(
+    context: Context,
+    plan: IconSyncPlan,
+    onProgress: (IconSyncProgress) -> Unit
+): IconSyncResult = coroutineScope {
+    val updatesByApp = plan.updates.groupBy { it.packageName }
+    val staleByApp = plan.staleFiles.groupBy {
+        it.substringAfter(PERSISTENT_ICONS).trimStart('/').substringBefore('/')
+    }
+    val apps = (updatesByApp.keys + staleByApp.keys).filter(String::isNotBlank).distinct()
+    val totalApps = apps.size
+    val completedMutex = Mutex()
+    var completedApps = 0
+    val downloadDispatcher = Dispatchers.IO.limitedParallelism(8)
+
+    val results = apps.map { packageName ->
+        async(downloadDispatcher) {
+            val updates = updatesByApp[packageName].orEmpty()
+            val staleFiles = staleByApp[packageName].orEmpty()
+            onProgress(IconSyncProgress(completedApps, totalApps, packageName))
+            var downloadedForApp = 0
+            var removedForApp = 0
+
+            for (update in updates) {
+                val temporary = File.createTempFile("icon-", ".png", context.cacheDir)
+                try {
+                    onProgress(IconSyncProgress(completedApps, totalApps, packageName, update.file.name))
+                    downloadFile(update.file.path, temporary)
+                    check(sha256(temporary) == update.file.sha256) {
+                        "图标校验失败：${update.file.path}"
+                    }
+                    installRootFile(temporary, update.target)
+                    downloadedForApp++
+                } finally {
+                    temporary.delete()
+                }
+            }
+            for (staleFile in staleFiles) {
+                check(runRoot("rm -f ${shellQuote(staleFile)}").first == 0) {
+                    "无法删除旧图标资源"
+                }
+                removedForApp++
+            }
+            val completed = completedMutex.withLock { ++completedApps }
+            onProgress(IconSyncProgress(completed, totalApps, packageName))
+            IconSyncResult(downloadedForApp, removedForApp)
+        }
+    }.awaitAll()
+    IconSyncResult(results.sumOf { it.downloaded }, results.sumOf { it.removed })
+}
+
+private const val REQUIRED_PACKAGE = "__required__"
+
+private fun readLocalChecksums(): Map<String, String> {
+    val result = runRoot(
+        "find ${shellQuote(PERSISTENT_ICONS)} -type f -exec sha256sum {} +"
+    )
+    if (result.first != 0) return emptyMap()
+    return result.second.lineSequence().mapNotNull { line ->
+        val separator = line.indexOf("  ")
+        if (separator <= 0) return@mapNotNull null
+        val checksum = line.substring(0, separator).trim()
+        val path = line.substring(separator + 2).trim()
+        if (checksum.length == 64 && path.isNotEmpty()) path to checksum else null
+    }.toMap()
 }
 
 private fun installRootFile(source: File, target: String) {

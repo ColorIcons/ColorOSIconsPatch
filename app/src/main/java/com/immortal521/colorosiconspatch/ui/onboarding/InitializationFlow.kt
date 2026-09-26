@@ -23,6 +23,7 @@ import com.immortal521.colorosiconspatch.data.checkRoot
 import com.immortal521.colorosiconspatch.data.prepareAndInstallModule
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
 import com.immortal521.colorosiconspatch.ui.screen.WelcomeScreen
+import androidx.core.content.edit
 
 private const val PREFERENCES = "onboarding"
 private const val COMPLETED = "completed"
@@ -45,7 +46,7 @@ fun InitializationFlow(
         InitializationScreen(
             context = context,
             onComplete = {
-                preferences.edit().putBoolean(COMPLETED, true).apply()
+                preferences.edit { putBoolean(COMPLETED, true) }
                 initialized = true
             }
         )

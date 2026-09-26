@@ -20,9 +20,9 @@ import com.immortal521.colorosiconspatch.data.InstalledApp
 
 @Composable
 fun AppsScreen(
+    modifier: Modifier = Modifier,
     apps: List<InstalledApp>?,
     indexError: String? = null,
-    modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues()
 ) {
     MainScreenScaffold(
