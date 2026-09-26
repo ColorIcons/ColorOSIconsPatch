@@ -26,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.data.CheckStatus
+import com.immortal521.colorosiconspatch.data.ModuleOperationStatus
+import com.immortal521.colorosiconspatch.data.RootImplementation
 
 private enum class WelcomeStep {
     INTRO,
@@ -51,8 +54,11 @@ fun WelcomeScreen(
     modifier: Modifier = Modifier,
     rootStatus: CheckStatus,
     moduleStatus: CheckStatus,
+    rootImplementation: RootImplementation,
     onRequestRoot: () -> Unit,
-    onCheckModule: () -> Unit,
+    onInstallModule: () -> Unit,
+    moduleInstallStatus: ModuleOperationStatus?,
+    moduleInstallMessage: String?,
     onContinue: () -> Unit
 ) {
     var introComplete by rememberSaveable { mutableStateOf(false) }
@@ -65,13 +71,18 @@ fun WelcomeScreen(
         else -> WelcomeStep.ROOT
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         AnimatedVisibility(
             visibleState = entered,
             enter = fadeIn(tween(500)) +
@@ -102,13 +113,17 @@ fun WelcomeScreen(
                 step = currentStep,
                 rootStatus = rootStatus,
                 moduleStatus = moduleStatus,
+                rootImplementation = rootImplementation,
                 onRequestRoot = onRequestRoot,
-                onCheckModule = onCheckModule,
+                onInstallModule = onInstallModule,
+                moduleInstallStatus = moduleInstallStatus,
+                moduleInstallMessage = moduleInstallMessage,
                 onContinue = onContinue,
                 onStart = { introComplete = true }
             )
         }
     }
+}
 }
 
 @Composable
@@ -116,8 +131,11 @@ private fun StepContent(
     step: WelcomeStep,
     rootStatus: CheckStatus,
     moduleStatus: CheckStatus,
+    rootImplementation: RootImplementation,
     onRequestRoot: () -> Unit,
-    onCheckModule: () -> Unit,
+    onInstallModule: () -> Unit,
+    moduleInstallStatus: ModuleOperationStatus?,
+    moduleInstallMessage: String?,
     onContinue: () -> Unit,
     onStart: () -> Unit
 ) {
@@ -137,11 +155,11 @@ private fun StepContent(
             WelcomeStep.ROOT -> {
                 Text("授予 Root 权限", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "需要 Root 权限来检查并管理 KernelSU 模块。点击后请在系统弹窗中允许。",
+                    "需要 Root 权限来管理图标模块。",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
-                StatusText(rootStatus, "Root 权限")
+                StatusText(rootStatus, "${rootImplementation.displayName} Root 权限")
                 ActionForStatus(
                     status = rootStatus,
                     actionLabel = "请求 Root 权限",
@@ -151,22 +169,32 @@ private fun StepContent(
             WelcomeStep.MODULE -> {
                 Text("检查图标模块", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "确认 ColorOSIconsPatch 已安装并处于可用状态。",
+                    "检查模块状态，并在需要时准备模块。",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
                 StatusText(moduleStatus, "ColorOSIconsPatch 模块")
-                ActionForStatus(
-                    status = moduleStatus,
-                    actionLabel = "重新检查模块",
-                    onClick = onCheckModule
-                )
-                Text(
-                    "模块安装功能将在模块打包流程完成后提供。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+                if (moduleStatus != CheckStatus.PASSED) {
+                    Button(
+                        onClick = onInstallModule,
+                        modifier = Modifier.padding(top = 12.dp),
+                        enabled = moduleStatus != CheckStatus.CHECKING
+                    ) {
+                        Text("准备并安装模块")
+                    }
+                }
+                moduleInstallMessage?.let { message ->
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when (moduleInstallStatus) {
+                            ModuleOperationStatus.SUCCESS -> MaterialTheme.colorScheme.primary
+                            ModuleOperationStatus.MANUAL_INSTALL_REQUIRED -> MaterialTheme.colorScheme.tertiary
+                            else -> MaterialTheme.colorScheme.error
+                        },
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
             }
             WelcomeStep.COMPLETE -> {
                 Text("准备完成", style = MaterialTheme.typography.headlineSmall)

@@ -8,6 +8,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import com.immortal521.colorosiconspatch.data.CheckStatus
+import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -17,6 +20,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues()
 ) {
+    val environment = loadEnvironmentCheck(LocalContext.current)
     val androidVersion = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
     val securityPatch = Build.VERSION.SECURITY_PATCH
     val deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
@@ -42,7 +46,8 @@ fun HomeScreen(
             SystemInfoRow("安全补丁", securityPatch)
             SystemInfoRow("设备型号", deviceModel)
             SystemInfoRow("Kernel 版本", kernelVersion)
-            SystemInfoRow("KernelSU", "暂未检查")
+            SystemInfoRow("Root 实现", environment.implementation.displayName)
+            SystemInfoRow("Root 状态", rootStatusText(environment.root))
 
             Text(
                 text = "图标适配",
@@ -54,6 +59,13 @@ fun HomeScreen(
             SystemInfoRow("待适配", "暂未读取")
         }
     }
+}
+
+private fun rootStatusText(status: CheckStatus): String = when (status) {
+    CheckStatus.UNKNOWN -> "尚未检查"
+    CheckStatus.CHECKING -> "检查中..."
+    CheckStatus.PASSED -> "已通过"
+    CheckStatus.FAILED -> "未通过"
 }
 
 @Composable
