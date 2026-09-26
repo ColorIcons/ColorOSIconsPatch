@@ -16,12 +16,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.immortal521.colorosiconspatch.data.InstalledApp
+import com.immortal521.colorosiconspatch.data.loadInstalledApps
 import com.immortal521.colorosiconspatch.ui.navigation.MainNavigationBar
 import com.immortal521.colorosiconspatch.ui.screen.AppsScreen
 import com.immortal521.colorosiconspatch.ui.screen.HomeScreen
@@ -33,7 +40,17 @@ fun App() {
     var showWelcome by rememberSaveable { mutableStateOf(true) }
     var selectedTab by rememberSaveable { mutableStateOf(0) }
     val pagerState = rememberPagerState(initialPage = selectedTab) { 3 }
-    val pagerScope = androidx.compose.runtime.rememberCoroutineScope()
+    val pagerScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var installedApps by remember { mutableStateOf<List<InstalledApp>?>(null) }
+
+    LaunchedEffect(pagerState.settledPage) {
+        if (pagerState.settledPage == 1 && installedApps == null) {
+            installedApps = withContext(Dispatchers.IO) {
+                loadInstalledApps(context)
+            }
+        }
+    }
 
     LaunchedEffect(pagerState) {
         androidx.compose.runtime.snapshotFlow { pagerState.currentPage }
@@ -41,7 +58,7 @@ fun App() {
     }
 
     BackHandler(enabled = !showWelcome && selectedTab != 0) {
-        selectedTab = 0
+        pagerScope.launch { pagerState.animateScrollToPage(0) }
     }
 
     Scaffold(
@@ -86,7 +103,10 @@ fun App() {
             ) { page ->
                 when (page) {
                     0 -> HomeScreen(contentPadding = mainContentPadding)
-                    1 -> AppsScreen(contentPadding = mainContentPadding)
+                    1 -> AppsScreen(
+                        apps = installedApps,
+                        contentPadding = mainContentPadding
+                    )
                     2 -> SettingsScreen(contentPadding = mainContentPadding)
                 }
             }

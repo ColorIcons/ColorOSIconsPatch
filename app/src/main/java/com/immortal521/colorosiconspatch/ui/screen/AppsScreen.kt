@@ -1,6 +1,5 @@
 package com.immortal521.colorosiconspatch.ui.screen
 
-import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,31 +13,24 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.data.InstalledApp
-import com.immortal521.colorosiconspatch.data.loadInstalledApps
 
 @Composable
 fun AppsScreen(
+    apps: List<InstalledApp>?,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues()
 ) {
-    val context = LocalContext.current
-    val apps = produceState<List<InstalledApp>?>(null, context) {
-        value = loadInstalledApps(context)
-    }
-
     MainScreenScaffold(
         title = "应用",
         contentPadding = contentPadding,
         modifier = modifier,
         scrollable = false
     ) { contentModifier ->
-        when (val appList = apps.value) {
+        when (val appList = apps) {
             null -> Text(
                 text = "正在加载应用…",
                 modifier = contentModifier.padding(horizontal = 24.dp, vertical = 16.dp)
