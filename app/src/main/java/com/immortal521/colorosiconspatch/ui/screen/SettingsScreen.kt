@@ -1,5 +1,6 @@
 package com.immortal521.colorosiconspatch.ui.screen
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -50,12 +51,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.MaterialTheme
@@ -86,6 +87,7 @@ import com.immortal521.colorosiconspatch.data.DOWNLOAD_VARIANTS
 import com.immortal521.colorosiconspatch.data.ThemeMode
 import com.immortal521.colorosiconspatch.data.setAppLanguage
 import com.immortal521.colorosiconspatch.data.setPredictiveBackEnabled
+import com.immortal521.colorosiconspatch.data.UpdateDownloadReceiver
 import com.immortal521.colorosiconspatch.ui.component.material.ExpressiveToggleButton
 import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
 import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
@@ -95,10 +97,14 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
+
 enum class SettingsPage { ROOT, THEME, DOWNLOAD }
 
 @Composable
@@ -125,8 +131,37 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
     val context = LocalContext.current
     val settings by AppSettingsState.settings.collectAsState()
     var checking by remember { mutableStateOf(false) }
+    var downloading by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableStateOf(0) }
     var result by remember { mutableStateOf<UpdateCheckResult?>(null) }
     val scope = rememberCoroutineScope()
+    fun startUpdate() {
+        val update = result ?: return
+        if (update.apkUrl == null) return
+        downloading = true
+        downloadProgress = 0
+        scope.launch {
+            val uri = downloadUpdate(context, update) { progress -> downloadProgress = progress }
+            downloading = false
+            if (uri != null) {
+                context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    clipData = android.content.ClipData.newRawUri("update", uri)
+                })
+            }
+        }
+    }
+
+    fun checkUpdates() {
+        checking = true
+        result = null
+        scope.launch {
+            result = withContext(Dispatchers.IO) { checkForUpdate(context) }
+            checking = false
+        }
+    }
+
     val languages = listOf(
         stringResource(R.string.system_default) to "",
         stringResource(R.string.simplified_chinese) to "zh-CN",
@@ -153,37 +188,23 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
                     Icons.Filled.SystemUpdate,
                     stringResource(R.string.check_updates),
                     result?.message ?: stringResource(R.string.check_updates_summary),
-                    onClick = {
-                        checking = true
-                        result = null
-                        scope.launch {
-                            result = withContext(Dispatchers.IO) { checkForUpdate(context) }
-                            checking = false
-                        }
-                    }
+                    onClick = { if (result?.apkUrl != null) startUpdate() else checkUpdates() }
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (result?.url != null) {
-                            Button(onClick = {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(result!!.url)))
-                            }) { Text(stringResource(R.string.open)) }
+                    Button(
+                        onClick = { if (result?.apkUrl != null) startUpdate() else checkUpdates() },
+                        enabled = !checking && !downloading
+                    ) {
+                        if (checking) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else if (downloading) {
+                            Text("$downloadProgress%")
+                        } else {
+                            Text(stringResource(if (result?.apkUrl != null) R.string.update else R.string.check))
                         }
-                        Button(
-                            onClick = {
-                                checking = true
-                                result = null
-                                scope.launch {
-                                    result = withContext(Dispatchers.IO) { checkForUpdate(context) }
-                                    checking = false
-                                }
-                            },
-                            enabled = !checking
-                        ) { Text(stringResource(if (checking) R.string.checking else R.string.check)) }
                     }
                 }
             }
         ))
-        if (checking) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
 
         SegmentedColumn(content = listOf(
             { ArrowItem(Icons.Filled.Palette, stringResource(R.string.theme), stringResource(R.string.theme_summary)) { open(SettingsPage.THEME) } },
@@ -571,50 +592,6 @@ private fun ArrowItem(icon: ImageVector, title: String, summary: String, onClick
     )
 }
 
-@Composable
-private fun DropdownItem(
-    icon: ImageVector,
-    title: String,
-    summary: String,
-    value: String,
-    expanded: Boolean,
-    onExpand: () -> Unit,
-    onDismiss: () -> Unit,
-    options: List<String>,
-    onSelected: (Int) -> Unit
-) {
-    Column {
-        SegmentedListItem(
-            shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
-            colors = settingsItemColors(),
-            content = { Text(title) },
-            supportingContent = { Text(summary) },
-            leadingContent = { Icon(icon, title) },
-            onClick = onExpand,
-            trailingContent = { Text(value, color = MaterialTheme.colorScheme.primary) },
-            verticalAlignment = Alignment.CenterVertically
-        )
-        if (expanded) {
-            DropdownMenu(expanded = true, onDismissRequest = onDismiss) {
-                options.forEachIndexed { index, option ->
-                    DropdownMenuItem(text = { Text(option) }, onClick = { onSelected(index) })
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RadioItem(title: String, selected: Boolean, onClick: () -> Unit) {
-    SegmentedListItem(
-        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
-        colors = settingsItemColors(),
-        content = { Text(title) },
-        onClick = onClick,
-        leadingContent = { RadioButton(selected = selected, onClick = onClick) },
-        verticalAlignment = Alignment.CenterVertically
-    )
-}
 
 @Composable
 private fun SwitchItem(icon: ImageVector? = null, title: String, summary: String, checked: Boolean, onClick: () -> Unit) {
@@ -633,7 +610,7 @@ private fun SwitchItem(icon: ImageVector? = null, title: String, summary: String
 private fun currentLanguageTag(context: android.content.Context): String =
     context.resources.configuration.locales[0]?.toLanguageTag().orEmpty()
 
-private data class UpdateCheckResult(val message: String, val url: String? = null)
+private data class UpdateCheckResult(val message: String, val apkUrl: String? = null)
 
 private fun checkForUpdate(context: android.content.Context): UpdateCheckResult = runCatching {
     val connection = URL("https://api.github.com/repos/ColorIcons/ColorOSIconsPatch/releases/latest")
@@ -646,9 +623,14 @@ private fun checkForUpdate(context: android.content.Context): UpdateCheckResult 
             200 -> {
                 val body = connection.inputStream.bufferedReader().use { it.readText() }
                 val tag = org.json.JSONObject(body).optString("tag_name").removePrefix("v")
-                val url = org.json.JSONObject(body).optString("html_url").takeIf { it.isNotBlank() }
-                if (compareVersions(tag, currentVersion(context)) > 0) {
-                    UpdateCheckResult(context.getString(R.string.release_available), url)
+                val assets = org.json.JSONObject(body).optJSONArray("assets")
+                val apkUrl = (0 until (assets?.length() ?: 0)).asSequence()
+                    .map { assets!!.getJSONObject(it) }
+                    .firstOrNull { it.optString("name").endsWith(".apk") }
+                    ?.optString("browser_download_url")
+                    ?.takeIf { it.isNotBlank() }
+                if (compareVersions(tag, currentVersion(context)) > 0 && apkUrl != null) {
+                    UpdateCheckResult(context.getString(R.string.release_available), apkUrl)
                 } else {
                     UpdateCheckResult(context.getString(R.string.update_up_to_date))
                 }
@@ -657,6 +639,49 @@ private fun checkForUpdate(context: android.content.Context): UpdateCheckResult 
         }
     } finally { connection.disconnect() }
 }.getOrElse { UpdateCheckResult(context.getString(R.string.update_check_failed, it.message ?: context.getString(R.string.network_unavailable))) }
+
+@SuppressLint("UseKt")
+private suspend fun downloadUpdate(
+    context: android.content.Context,
+    result: UpdateCheckResult,
+    onProgress: (Int) -> Unit
+): Uri? = withContext<Uri?>(Dispatchers.IO) {
+    val url = result.apkUrl ?: return@withContext null
+    val filename = "ColorOSIconsPatch-update.apk"
+    val manager = context.getSystemService(android.app.DownloadManager::class.java)
+    val request = android.app.DownloadManager.Request(url.toUri())
+        .setTitle(context.getString(R.string.app_name))
+        .setDescription(context.getString(R.string.downloading_update))
+        .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        .setAllowedOverMetered(true)
+        .setAllowedOverRoaming(true)
+        .setDestinationInExternalFilesDir(context, android.os.Environment.DIRECTORY_DOWNLOADS, filename)
+    val id = manager.enqueue(request)
+    UpdateDownloadReceiver.rememberDownload(context, id, filename)
+    var finished = false
+    var downloadedUri: Uri? = null
+    while (!finished) {
+        val query = manager.query(android.app.DownloadManager.Query().setFilterById(id)) ?: return@withContext null
+        val state = query.use { cursor ->
+            if (!cursor.moveToFirst()) return@withContext null
+            Triple(
+                cursor.getInt(cursor.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS)),
+                cursor.getLong(cursor.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)),
+                cursor.getLong(cursor.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+            )
+        }
+        if (state.third > 0) onProgress((state.second * 100 / state.third).toInt().coerceIn(0, 100))
+        when (state.first) {
+            android.app.DownloadManager.STATUS_SUCCESSFUL -> {
+                downloadedUri = manager.getUriForDownloadedFile(id)
+                finished = true
+            }
+            android.app.DownloadManager.STATUS_FAILED -> finished = true
+            else -> delay(500.milliseconds)
+        }
+    }
+    downloadedUri
+}
 
 private fun currentVersion(context: android.content.Context): String =
     context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()

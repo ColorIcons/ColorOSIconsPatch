@@ -44,7 +44,7 @@
   <string name="check_updates">检查应用更新</string>
   <string name="check_updates_summary">手动检查是否有新版本</string>
   <string name="checking">检查中</string>
-  <string name="check">检查</string>
+  <string name="check">检查</string><string name="update">更新</string><string name="downloading_update">正在下载更新</string>
   <string name="theme">主题</string>
   <string name="theme_summary">颜色、深色模式和动态取色</string>
   <string name="download_settings">下载设置</string>

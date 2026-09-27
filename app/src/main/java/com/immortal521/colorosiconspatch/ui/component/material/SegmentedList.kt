@@ -93,13 +93,13 @@ fun ExpressiveToggleButton(
 
 @Composable
 fun SegmentedDropdownItem(
+    modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     title: String,
     summary: String? = null,
     items: List<String>,
     selectedIndex: Int,
     onItemSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(IntOffset.Zero) }
