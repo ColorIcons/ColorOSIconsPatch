@@ -2,6 +2,7 @@ package com.immortal521.colorosiconspatch.ui.screen
 
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +51,7 @@ import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.RootImplementation
 import com.immortal521.colorosiconspatch.data.XposedServiceState
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
+import com.immortal521.colorosiconspatch.data.checkRoot
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -63,7 +66,14 @@ fun HomeScreen(
     onRefreshLauncher: () -> Unit = {}
 ) {
     var showRefreshConfirmation by remember { mutableStateOf(false) }
-    val environment = loadEnvironmentCheck(LocalContext.current)
+    val context = LocalContext.current
+    var environment by remember { mutableStateOf(loadEnvironmentCheck(context)) }
+    LaunchedEffect(Unit) {
+        if (environment.root == CheckStatus.PASSED) {
+            checkRoot(context)
+            environment = loadEnvironmentCheck(context)
+        }
+    }
     val xposedService by XposedServiceState.service.collectAsState()
     val xposedStatus = if (xposedService != null) {
         CheckStatus.PASSED
@@ -93,7 +103,8 @@ fun HomeScreen(
                 implementation = environment.implementation,
                 root = environment.root,
                 module = environment.module,
-                xposed = xposedStatus
+                xposed = xposedStatus,
+                rootVersion = environment.rootVersion
             )
 
             if (plan == null || plan.totalChanges > 0 || syncing || error != null) {
@@ -144,11 +155,10 @@ private fun RootStatusCard(
     implementation: RootImplementation,
     root: CheckStatus,
     module: CheckStatus,
-    xposed: CheckStatus
+    xposed: CheckStatus,
+    rootVersion: String
 ) {
-    val ready = root == CheckStatus.PASSED &&
-        module == CheckStatus.PASSED &&
-        xposed == CheckStatus.PASSED
+    val ready = root == CheckStatus.PASSED && module == CheckStatus.PASSED
     val containerColor = if (ready) {
         MaterialTheme.colorScheme.secondaryContainer
     } else {
@@ -171,12 +181,11 @@ private fun RootStatusCard(
         checking -> stringResource(R.string.environment_checking)
         else -> stringResource(R.string.environment_not_ready)
     }
-    val summary = when {
-        ready -> stringResource(R.string.environment_ready_summary, implementation.displayName)
-        checking -> stringResource(R.string.environment_checking_summary, implementation.displayName)
-        root != CheckStatus.PASSED -> stringResource(R.string.root_unavailable_summary, implementation.displayName)
-        module != CheckStatus.PASSED -> stringResource(R.string.module_missing_summary, implementation.displayName)
-        else -> stringResource(R.string.xposed_inactive_summary, implementation.displayName)
+    val rootVersionText = rootVersion.ifBlank { stringResource(R.string.unknown_value) }
+    val lsposedText = if (xposed == CheckStatus.PASSED) {
+        stringResource(R.string.lsposed_active)
+    } else {
+        stringResource(R.string.lsposed_inactive_refresh)
     }
 
     Surface(
@@ -185,26 +194,34 @@ private fun RootStatusCard(
         contentColor = contentColor,
         shape = MaterialTheme.shapes.large
     ) {
-        ListItem(
-            leadingContent = { Icon(icon, contentDescription = title) },
-            content = { Text(title, style = MaterialTheme.typography.titleMediumEmphasized) },
-            supportingContent = {
-                Text(summary, style = MaterialTheme.typography.bodyMedium)
-            },
-            trailingContent = {
-                StatusPill(
-                    text = stringResource(if (ready) R.string.status_ready else R.string.status_needs_action),
-                    color = if (ready) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(modifier = Modifier.align(Alignment.CenterVertically)) {
+                Icon(icon, contentDescription = title)
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(title, style = MaterialTheme.typography.titleMediumEmphasized)
+                Text(
+                    stringResource(R.string.root_manager_version, implementation.displayName, rootVersionText),
+                    style = MaterialTheme.typography.bodyMedium
                 )
-            },
-            colors = ListItemDefaults.colors(
-                containerColor = Color.Transparent,
-                headlineColor = contentColor,
-                leadingIconColor = contentColor,
-                trailingIconColor = contentColor,
-                supportingColor = contentColor.copy(alpha = 0.75f)
+                Text(
+                    lsposedText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (xposed == CheckStatus.PASSED) contentColor else MaterialTheme.colorScheme.error
+                )
+            }
+            StatusPill(
+                text = stringResource(if (ready) R.string.status_ready else R.string.status_needs_action),
+                color = if (ready) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
             )
-        )
+        }
     }
 }
 
