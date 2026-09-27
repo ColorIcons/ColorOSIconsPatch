@@ -13,7 +13,7 @@ private const val MODULE_ID = "ColorOSIconsPatch"
 private const val MODULE_VERSION = "0.4.0"
 private const val MODULE_VERSION_CODE = "000040"
 private const val MODULE_ASSET_ROOT = "module"
-private const val PERSISTENT_ICONS = "/data/adb/colorosiconspatch/uxicons"
+private const val PERSISTENT_ICONS = "/data/adb/ColorOSIconsPatch/uxicons"
 private const val PUBLIC_ZIP = "/sdcard/Download/ColorOSIconsPatch.zip"
 
 enum class ModuleOperationStatus {
@@ -72,6 +72,7 @@ private fun createModuleZip(context: Context, output: File) {
         ZipOutputStream(temporary.outputStream().buffered()).use { zip ->
             addText(zip, "module.prop", moduleProp())
             addAsset(zip, context, "customize.sh")
+            addAsset(zip, context, "action.sh")
             addAsset(zip, context, "post-fs-data.sh")
             addAsset(zip, context, "service.sh")
             addAsset(zip, context, "uninstall.sh")

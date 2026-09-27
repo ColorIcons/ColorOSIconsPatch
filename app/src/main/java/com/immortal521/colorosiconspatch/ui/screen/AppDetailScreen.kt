@@ -52,7 +52,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
-private const val ICON_ROOT = "/data/adb/colorosiconspatch/uxicons"
+private const val ICON_ROOT = "/data/adb/ColorOSIconsPatch/uxicons"
 
 @Composable
 fun AppDetailScreen(
