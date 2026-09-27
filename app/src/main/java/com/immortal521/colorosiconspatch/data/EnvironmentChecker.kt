@@ -28,12 +28,7 @@ data class EnvironmentCheckResult(
     val rootVersion: String = "",
     val susfs: CheckStatus = CheckStatus.UNKNOWN,
     val xposed: CheckStatus = CheckStatus.UNKNOWN
-) {
-    val ready: Boolean
-        get() = root == CheckStatus.PASSED &&
-            module == CheckStatus.PASSED &&
-            xposed == CheckStatus.PASSED
-}
+)
 
 private const val PREFERENCES = "environment_check"
 private const val ROOT_STATUS = "root_status"
