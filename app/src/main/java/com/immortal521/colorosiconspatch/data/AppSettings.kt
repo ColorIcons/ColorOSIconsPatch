@@ -1,11 +1,16 @@
 package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.os.Build
 import android.os.LocaleList
 import android.app.LocaleManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
+import androidx.core.content.edit
 
 private const val PREFS = "app_settings"
 private const val KEY_CHANNEL = "download_channel"
@@ -14,6 +19,10 @@ private const val KEY_VARIANTS = "download_variants"
 private const val KEY_THEME = "theme_mode"
 private const val KEY_DYNAMIC = "dynamic_color"
 private const val KEY_AUTO_CHECK_UPDATE = "auto_check_update"
+private const val KEY_KEY_COLOR = "key_color"
+private const val KEY_PALETTE_STYLE = "palette_style"
+private const val KEY_COLOR_SPEC = "color_spec"
+private const val KEY_PREDICTIVE_BACK = "predictive_back"
 
 const val CHANNEL_GITHUB = "github"
 const val CHANNEL_CLOUDFLARE = "cloudflare"
@@ -30,6 +39,10 @@ data class AppSettings(
     val variants: Set<String> = DOWNLOAD_VARIANTS.toSet(),
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
+    val keyColor: Int = 0,
+    val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
+    val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
+    val predictiveBack: Boolean = true,
     val autoCheckUpdates: Boolean = false
 ) {
     val indexUrl: String
@@ -51,19 +64,31 @@ fun loadAppSettings(context: Context): AppSettings {
         theme = runCatching { ThemeMode.valueOf(prefs.getString(KEY_THEME, ThemeMode.SYSTEM.name)!!) }
             .getOrDefault(ThemeMode.SYSTEM),
         dynamicColor = prefs.getBoolean(KEY_DYNAMIC, true),
+        keyColor = prefs.getInt(KEY_KEY_COLOR, 0),
+        paletteStyle = runCatching {
+            PaletteStyle.valueOf(prefs.getString(KEY_PALETTE_STYLE, PaletteStyle.TonalSpot.name)!!)
+        }.getOrDefault(PaletteStyle.TonalSpot),
+        colorSpec = runCatching {
+            ColorSpec.SpecVersion.valueOf(prefs.getString(KEY_COLOR_SPEC, ColorSpec.SpecVersion.SPEC_2025.name)!!)
+        }.getOrDefault(ColorSpec.SpecVersion.SPEC_2025),
+        predictiveBack = prefs.getBoolean(KEY_PREDICTIVE_BACK, true),
         autoCheckUpdates = prefs.getBoolean(KEY_AUTO_CHECK_UPDATE, false)
     )
 }
 
 fun saveAppSettings(context: Context, settings: AppSettings) {
-    context.settingsPrefs().edit()
-        .putString(KEY_CHANNEL, settings.channel)
-        .putInt(KEY_CONCURRENCY, settings.concurrency)
-        .putStringSet(KEY_VARIANTS, settings.variants)
-        .putString(KEY_THEME, settings.theme.name)
-        .putBoolean(KEY_DYNAMIC, settings.dynamicColor)
-        .putBoolean(KEY_AUTO_CHECK_UPDATE, settings.autoCheckUpdates)
-        .apply()
+    context.settingsPrefs().edit {
+        putString(KEY_CHANNEL, settings.channel)
+            .putInt(KEY_CONCURRENCY, settings.concurrency)
+            .putStringSet(KEY_VARIANTS, settings.variants)
+            .putString(KEY_THEME, settings.theme.name)
+            .putBoolean(KEY_DYNAMIC, settings.dynamicColor)
+            .putInt(KEY_KEY_COLOR, settings.keyColor)
+            .putString(KEY_PALETTE_STYLE, settings.paletteStyle.name)
+            .putString(KEY_COLOR_SPEC, settings.colorSpec.name)
+            .putBoolean(KEY_PREDICTIVE_BACK, settings.predictiveBack)
+            .putBoolean(KEY_AUTO_CHECK_UPDATE, settings.autoCheckUpdates)
+    }
 }
 
 object AppSettingsState {
@@ -75,6 +100,19 @@ object AppSettingsState {
         val next = transform(_settings.value)
         saveAppSettings(context, next)
         _settings.value = next
+    }
+}
+
+fun setPredictiveBackEnabled(context: Context, enabled: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+    runCatching {
+        org.lsposed.hiddenapibypass.HiddenApiBypass.addHiddenApiExemptions(
+            "Landroid/content/pm/ApplicationInfo;->setEnableOnBackInvokedCallback"
+        )
+        val method = ApplicationInfo::class.java
+            .getDeclaredMethod("setEnableOnBackInvokedCallback", Boolean::class.javaPrimitiveType)
+            .apply { isAccessible = true }
+        method.invoke(context.applicationInfo, enabled)
     }
 }
 

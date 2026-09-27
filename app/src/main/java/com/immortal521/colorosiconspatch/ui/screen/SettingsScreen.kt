@@ -1,8 +1,21 @@
 package com.immortal521.colorosiconspatch.ui.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,29 +25,40 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Brightness4
+import androidx.compose.material.icons.filled.Brightness3
+import androidx.compose.material.icons.filled.Brightness7
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DesignServices
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.MenuOpen
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,6 +79,14 @@ import com.immortal521.colorosiconspatch.data.CHANNEL_CLOUDFLARE
 import com.immortal521.colorosiconspatch.data.DOWNLOAD_VARIANTS
 import com.immortal521.colorosiconspatch.data.ThemeMode
 import com.immortal521.colorosiconspatch.data.setAppLanguage
+import com.immortal521.colorosiconspatch.data.setPredictiveBackEnabled
+import com.immortal521.colorosiconspatch.ui.component.material.ExpressiveToggleButton
+import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
+import com.immortal521.colorosiconspatch.ui.component.material.SegmentedDropdownItem
+import com.immortal521.colorosiconspatch.ui.theme.effectiveFor
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
+import com.materialkolor.rememberDynamicColorScheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -152,34 +184,223 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
 private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: () -> Unit) {
     val context = LocalContext.current
     val settings by AppSettingsState.settings.collectAsState()
+    val isDark = when (settings.theme) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+
     SettingsPageScaffold("主题", modifier, padding, onBack) {
-        Card(
+        ThemePreview(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-            shape = RoundedCornerShape(24.dp)
+            isDark = isDark,
+            keyColor = settings.keyColor,
+            paletteStyle = settings.paletteStyle,
+            colorSpec = settings.colorSpec
+        )
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 0.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("ColorOS Icons", style = MaterialTheme.typography.headlineSmall)
-                Text("主题预览", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary).forEach { color ->
-                        Spacer(Modifier.size(48.dp).background(color, RoundedCornerShape(14.dp)))
+            item { ColorSeedButton(0, settings.keyColor == 0, isDark, settings.paletteStyle, settings.colorSpec) { AppSettingsState.update(context) { it.copy(keyColor = 0) } } }
+            items(listOf(0xFFF44336.toInt(), 0xFF2196F3.toInt(), 0xFF009688.toInt(), 0xFFFF9800.toInt(), 0xFF9C27B0.toInt())) { color ->
+                ColorSeedButton(color, settings.keyColor == color, isDark, settings.paletteStyle, settings.colorSpec) { AppSettingsState.update(context) { it.copy(keyColor = color) } }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+        ) {
+            listOf(
+                Triple(Icons.Filled.Brightness4, "系统", ThemeMode.SYSTEM),
+                Triple(Icons.Filled.Brightness7, "浅色", ThemeMode.LIGHT),
+                Triple(Icons.Filled.Brightness3, "深色", ThemeMode.DARK)
+            ).forEachIndexed { index, (icon, label, mode) ->
+                ExpressiveToggleButton(
+                    checked = settings.theme == mode,
+                    onCheckedChange = { checked ->
+                        if (checked) AppSettingsState.update(context) { it.copy(theme = mode) }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shapes = when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        2 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     }
+                ) {
+                    Icon(icon, contentDescription = label)
+                    Spacer(Modifier.width(6.dp))
+                    Text(label)
                 }
             }
         }
-        SettingsGroup(title = "外观") {
-            ThemeMode.values().forEach { mode ->
-                RadioItem(
-                    title = when (mode) { ThemeMode.SYSTEM -> "跟随系统"; ThemeMode.LIGHT -> "浅色"; ThemeMode.DARK -> "深色" },
-                    selected = settings.theme == mode
-                ) { AppSettingsState.update(context) { it.copy(theme = mode) } }
+
+        SegmentedColumn(
+            modifier = Modifier.fillMaxWidth(),
+            content = listOf(
+                {
+                    val styles = PaletteStyle.entries
+                    SegmentedDropdownItem(
+                        icon = Icons.Filled.Style,
+                        title = "调色板样式",
+                        items = styles.map { it.name },
+                        selectedIndex = styles.indexOf(settings.paletteStyle),
+                        onItemSelected = { index ->
+                            AppSettingsState.update(context) { it.copy(paletteStyle = styles[index]) }
+                        }
+                    )
+                },
+                {
+                    val specs = ColorSpec.SpecVersion.entries
+                    SegmentedDropdownItem(
+                        icon = Icons.Filled.DesignServices,
+                        title = "色彩规范",
+                        items = specs.map { it.name },
+                        selectedIndex = specs.indexOf(settings.colorSpec).coerceAtLeast(0),
+                        onItemSelected = { index ->
+                            AppSettingsState.update(context) { it.copy(colorSpec = specs[index]) }
+                        }
+                    )
+                }
+            )
+        )
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            SettingsGroup {
+                SwitchItem(
+                    icon = Icons.Filled.MenuOpen,
+                    title = "预测性返回手势",
+                    summary = "启用系统返回手势的预览动画",
+                    checked = settings.predictiveBack
+                ) {
+                    val enabled = !settings.predictiveBack
+                    AppSettingsState.update(context) { it.copy(predictiveBack = enabled) }
+                    setPredictiveBackEnabled(context, enabled)
+                    (context as? android.app.Activity)?.recreate()
+                }
             }
-            SwitchItem(
-                title = "动态取色",
-                summary = "使用系统壁纸生成 Material You 配色",
-                checked = settings.dynamicColor
-            ) { AppSettingsState.update(context) { it.copy(dynamicColor = !it.dynamicColor) } }
+        }
+    }
+}
+
+@Composable
+private fun ColorSeedButton(
+    color: Int,
+    selected: Boolean,
+    isDark: Boolean,
+    paletteStyle: PaletteStyle,
+    colorSpec: ColorSpec.SpecVersion,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val systemWallpaperScheme = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        if (isDark) androidx.compose.material3.dynamicDarkColorScheme(context)
+        else androidx.compose.material3.dynamicLightColorScheme(context)
+    } else MaterialTheme.colorScheme
+    val scheme = rememberDynamicColorScheme(
+        seedColor = if (color == 0) systemWallpaperScheme.primary else Color(color),
+        isDark = isDark,
+        style = paletteStyle,
+        specVersion = colorSpec.effectiveFor(paletteStyle)
+    )
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.size(72.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = scheme.surfaceContainer
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Canvas(Modifier.size(48.dp)) {
+                drawArc(scheme.primaryContainer, 180f, 180f, true)
+                drawArc(scheme.tertiaryContainer, 0f, 180f, true)
+            }
+            AnimatedVisibility(
+                visible = selected,
+                enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                exit = fadeOut() + scaleOut(targetScale = 0.8f)
+            ) {
+                Box(
+                    modifier = Modifier.size(56.dp).border(2.dp, scheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(Modifier.size(24.dp).clip(CircleShape).background(scheme.primary)) {
+                        Icon(Icons.Filled.Palette, null, tint = scheme.onPrimary, modifier = Modifier.align(Alignment.Center).size(16.dp))
+                    }
+                }
+            }
+            AnimatedVisibility(visible = !selected) {
+                Box(Modifier.size(20.dp).background(scheme.primary, CircleShape))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemePreview(
+    modifier: Modifier = Modifier,
+    isDark: Boolean,
+    keyColor: Int,
+    paletteStyle: PaletteStyle,
+    colorSpec: ColorSpec.SpecVersion
+) {
+    val context = LocalContext.current
+    val systemScheme = if (isDark) {
+        androidx.compose.material3.dynamicDarkColorScheme(context)
+    } else {
+        androidx.compose.material3.dynamicLightColorScheme(context)
+    }
+    val scheme = rememberDynamicColorScheme(
+        seedColor = if (keyColor == 0) systemScheme.primary else Color(keyColor),
+        isDark = isDark,
+        style = paletteStyle,
+        specVersion = colorSpec.effectiveFor(paletteStyle)
+    )
+    Surface(
+        modifier = modifier,
+        color = scheme.surfaceContainer,
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.42f)
+                    .aspectRatio(0.52f)
+                    .padding(vertical = 14.dp, horizontal = 7.dp)
+                    .border(1.dp, scheme.outlineVariant, RoundedCornerShape(14.dp))
+                    .padding(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    "ColorOS Icons",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurface
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(34.dp)
+                        .background(scheme.secondaryContainer, RoundedCornerShape(7.dp))
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .background(scheme.surfaceBright, RoundedCornerShape(7.dp))
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .background(scheme.surfaceContainerHigh, RoundedCornerShape(7.dp)),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Brightness4, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(14.dp))
+                }
+            }
         }
     }
 }
@@ -198,8 +419,10 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
             }
         }
         SettingsGroup(title = "下载性能") {
-            ListItem(
-                headlineContent = { Text("并发数") },
+            SegmentedListItem(
+                shapes = ListItemDefaults.segmentedShapes(0, 1),
+                colors = settingsItemColors(),
+                content = { Text("并发数") },
                 supportingContent = { Text("同时下载的资源数量：${settings.concurrency}") },
                 trailingContent = { Text(settings.concurrency.toString(), color = MaterialTheme.colorScheme.primary) }
             )
@@ -233,18 +456,23 @@ private fun SettingsPageScaffold(title: String, modifier: Modifier, padding: Pad
 private fun SettingsGroup(title: String? = null, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         title?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)) }
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surfaceBright,
-            shape = RoundedCornerShape(20.dp)
-        ) { Column { content() } }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { content() }
     }
 }
 
 @Composable
+private fun settingsItemColors() = ListItemDefaults.segmentedColors(
+    containerColor = MaterialTheme.colorScheme.surfaceBright,
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceBright,
+    supportingContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+)
+
+@Composable
 private fun ActionItem(icon: ImageVector, title: String, summary: String, trailing: @Composable () -> Unit) {
-    ListItem(
-        headlineContent = { Text(title) },
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(0, 1),
+        colors = settingsItemColors(),
+        content = { Text(title) },
         supportingContent = { Text(summary) },
         leadingContent = { Icon(icon, title) },
         trailingContent = trailing
@@ -253,8 +481,10 @@ private fun ActionItem(icon: ImageVector, title: String, summary: String, traili
 
 @Composable
 private fun ArrowItem(icon: ImageVector, title: String, summary: String, onClick: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(title) },
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(0, 1),
+        colors = settingsItemColors(),
+        content = { Text(title) },
         supportingContent = { Text(summary) },
         leadingContent = { Icon(icon, title) },
         trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
@@ -275,8 +505,10 @@ private fun DropdownItem(
     onSelected: (Int) -> Unit
 ) {
     Column {
-        ListItem(
-            headlineContent = { Text(title) },
+        SegmentedListItem(
+            shapes = ListItemDefaults.segmentedShapes(0, 1),
+            colors = settingsItemColors(),
+            content = { Text(title) },
             supportingContent = { Text(summary) },
             leadingContent = { Icon(icon, title) },
             trailingContent = { Text(value, color = MaterialTheme.colorScheme.primary) },
@@ -294,8 +526,10 @@ private fun DropdownItem(
 
 @Composable
 private fun RadioItem(title: String, selected: Boolean, onClick: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(title) },
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(0, 1),
+        colors = settingsItemColors(),
+        content = { Text(title) },
         leadingContent = { RadioButton(selected = selected, onClick = onClick) },
         modifier = Modifier.clickable(onClick = onClick)
     )
@@ -303,8 +537,10 @@ private fun RadioItem(title: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun SwitchItem(icon: ImageVector? = null, title: String, summary: String, checked: Boolean, onClick: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(title) },
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(0, 1),
+        colors = settingsItemColors(),
+        content = { Text(title) },
         supportingContent = { Text(summary) },
         leadingContent = icon?.let { { Icon(it, title) } },
         trailingContent = { Switch(checked = checked, onCheckedChange = { onClick() }) },

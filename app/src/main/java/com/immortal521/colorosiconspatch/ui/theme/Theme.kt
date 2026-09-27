@@ -13,6 +13,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.ThemeMode
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
+import com.materialkolor.rememberDynamicColorScheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -37,6 +41,19 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+private val PaletteStyle.supportsSpec2025: Boolean
+    get() = this == PaletteStyle.TonalSpot ||
+        this == PaletteStyle.Neutral ||
+        this == PaletteStyle.Vibrant ||
+        this == PaletteStyle.Expressive
+
+fun ColorSpec.SpecVersion.effectiveFor(style: PaletteStyle): ColorSpec.SpecVersion =
+    if (this == ColorSpec.SpecVersion.SPEC_2025 && !style.supportsSpec2025) {
+        ColorSpec.SpecVersion.SPEC_2021
+    } else {
+        this
+    }
+
 @Composable
 fun ColorOSIconsPatchTheme(
     content: @Composable () -> Unit
@@ -48,14 +65,20 @@ fun ColorOSIconsPatchTheme(
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    val colorScheme = when {
-        settings.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val context = LocalContext.current
+    val systemScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else if (darkTheme) {
+        DarkColorScheme
+    } else {
+        LightColorScheme
     }
+    val colorScheme = rememberDynamicColorScheme(
+        seedColor = if (settings.keyColor == 0) systemScheme.primary else Color(settings.keyColor),
+        isDark = darkTheme,
+        style = settings.paletteStyle,
+        specVersion = settings.colorSpec.effectiveFor(settings.paletteStyle)
+    )
 
     MaterialTheme(
         colorScheme = colorScheme,

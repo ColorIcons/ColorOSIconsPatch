@@ -52,6 +52,8 @@ dependencies {
     implementation(libs.libxposed.service)
     implementation(libs.miuix.ui)
     implementation(libs.miuix.nav)
+    implementation(libs.material.kolor)
+    implementation(libs.hidden.api.bypass)
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
