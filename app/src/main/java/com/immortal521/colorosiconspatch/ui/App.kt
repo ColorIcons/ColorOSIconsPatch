@@ -137,6 +137,7 @@ private fun MainPagerScreen(
     var syncProgress by remember { mutableStateOf<IconSyncProgress?>(null) }
     var syncError by remember { mutableStateOf<String?>(null) }
     var syncing by remember { mutableStateOf(false) }
+    var refreshingApps by remember { mutableStateOf(false) }
     val appSettings by AppSettingsState.settings.collectAsState()
 
     suspend fun refreshSyncPlan() {
@@ -242,6 +243,19 @@ private fun MainPagerScreen(
                     apps = installedApps,
                     indexError = iconIndexError,
                     contentPadding = mainContentPadding,
+                    isRefreshing = refreshingApps,
+                    onRefresh = {
+                        if (!refreshingApps) {
+                            pagerScope.launch {
+                                refreshingApps = true
+                                try {
+                                    refreshSyncPlan()
+                                } finally {
+                                    refreshingApps = false
+                                }
+                            }
+                        }
+                    },
                     onAppClick = onOpenApp
                 )
 

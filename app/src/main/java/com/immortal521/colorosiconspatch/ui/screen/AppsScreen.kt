@@ -28,6 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,7 +50,10 @@ fun AppsScreen(
     modifier: Modifier = Modifier,
     apps: List<InstalledApp>?,
     indexError: String? = null,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
+
     onAppClick: (InstalledApp) -> Unit = {}
 ) {
     var searchText by rememberSaveable { mutableStateOf("") }
@@ -166,31 +172,45 @@ fun AppsScreen(
                 }
             )
             when (val currentApps = visibleApps) {
-                null -> Box(
+                null -> LoadingIndicator(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LoadingIndicator()
-                }
-                else -> LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                ) {
-                    item {
-                        indexError?.let {
-                            Text(
-                                text = it,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                                color = MaterialTheme.colorScheme.tertiary,
-                                style = MaterialTheme.typography.bodySmall
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 8.dp)
+                )
+                else -> {
+                    val pullToRefreshState = rememberPullToRefreshState()
+                    PullToRefreshBox(
+                        modifier = Modifier.weight(1f),
+                        isRefreshing = isRefreshing,
+                        onRefresh = onRefresh,
+                        state = pullToRefreshState,
+                        indicator = {
+                            PullToRefreshDefaults.LoadingIndicator(
+                                modifier = Modifier.align(Alignment.TopCenter),
+                                isRefreshing = isRefreshing,
+                                state = pullToRefreshState
                             )
                         }
-                    }
-                    itemsIndexed(currentApps, key = { _, app -> app.packageName }) { index, app ->
-                        AppRow(app, index = index, count = currentApps.size, onClick = { onAppClick(app) })
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        ) {
+                            item {
+                                indexError?.let {
+                                    Text(
+                                        text = it,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                            itemsIndexed(currentApps, key = { _, app -> app.packageName }) { index, app ->
+                                AppRow(app, index = index, count = currentApps.size, onClick = { onAppClick(app) })
+                            }
+                        }
                     }
                 }
             }

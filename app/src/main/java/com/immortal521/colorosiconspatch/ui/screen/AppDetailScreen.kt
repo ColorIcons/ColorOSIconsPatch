@@ -32,6 +32,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -251,6 +253,17 @@ private fun IconSlot(
                 targetSize == "1x2" -> ContentScale.FillWidth
                 targetSize == "2x1" -> ContentScale.FillHeight
                 else -> ContentScale.Fit
+            }
+            if (category == "dark") {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(Color(0xFF292929), Color(0xFF202020))
+                            )
+                        )
+                )
             }
             entry.background?.let {
                 Image(
