@@ -23,11 +23,14 @@ import com.immortal521.colorosiconspatch.data.checkXposedActivation
 import com.immortal521.colorosiconspatch.data.checkRoot
 import com.immortal521.colorosiconspatch.data.prepareAndInstallModule
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
+import com.immortal521.colorosiconspatch.data.rebootDevice
 import com.immortal521.colorosiconspatch.ui.screen.WelcomeScreen
 import androidx.core.content.edit
+import android.provider.Settings
 
 private const val PREFERENCES = "onboarding"
 private const val COMPLETED = "completed"
+private const val REBOOT_BOOT_COUNT = "reboot_boot_count"
 
 @Composable
 fun InitializationFlow(
@@ -59,12 +62,21 @@ private fun InitializationScreen(
     context: Context,
     onComplete: () -> Unit
 ) {
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    }
     var environmentCheck by remember {
         mutableStateOf(loadEnvironmentCheck(context))
     }
     var moduleInstallStatus by remember { mutableStateOf<ModuleOperationStatus?>(null) }
     var moduleInstallMessage by remember { mutableStateOf<String?>(null) }
     var installRequested by remember { mutableStateOf(false) }
+    var rebootRequiredBootCount by remember {
+        mutableStateOf(preferences.getLong(REBOOT_BOOT_COUNT, -1L))
+    }
+    val currentBootCount = remember {
+        Settings.Global.getLong(context.contentResolver, Settings.Global.BOOT_COUNT, -1L)
+    }
 
     fun requestRoot() {
         environmentCheck = environmentCheck.copy(root = CheckStatus.CHECKING)
@@ -107,6 +119,10 @@ private fun InitializationScreen(
         ) {
             environmentCheck = environmentCheck.copy(xposed = CheckStatus.CHECKING)
             environmentCheck = environmentCheck.copy(xposed = checkXposedActivation(context))
+            if (rebootRequiredBootCount < 0L) {
+                rebootRequiredBootCount = currentBootCount
+                preferences.edit { putLong(REBOOT_BOOT_COUNT, currentBootCount) }
+            }
         }
     }
 
@@ -127,7 +143,16 @@ private fun InitializationScreen(
             moduleInstallStatus = moduleInstallStatus,
             moduleInstallMessage = moduleInstallMessage,
             onContinue = onComplete,
-            onCheckXposed = ::checkXposed
+            onCheckXposed = ::checkXposed,
+            onSkipXposed = {
+                environmentCheck = environmentCheck.copy(xposed = CheckStatus.PASSED)
+                if (rebootRequiredBootCount < 0L) {
+                    rebootRequiredBootCount = currentBootCount
+                    preferences.edit { putLong(REBOOT_BOOT_COUNT, currentBootCount) }
+                }
+            },
+            rebootReady = rebootRequiredBootCount >= 0L && currentBootCount != rebootRequiredBootCount,
+            onReboot = { rebootDevice() }
         )
     }
 }

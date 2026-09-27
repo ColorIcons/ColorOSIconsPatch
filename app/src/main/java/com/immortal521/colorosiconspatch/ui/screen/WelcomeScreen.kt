@@ -49,6 +49,7 @@ private enum class WelcomeStep {
     ROOT,
     MODULE,
     XPOSED,
+    REBOOT,
     COMPLETE
 }
 
@@ -64,7 +65,10 @@ fun WelcomeScreen(
     moduleInstallStatus: ModuleOperationStatus?,
     moduleInstallMessage: String?,
     onContinue: () -> Unit,
-    onCheckXposed: () -> Unit
+    onCheckXposed: () -> Unit,
+    onSkipXposed: () -> Unit,
+    rebootReady: Boolean,
+    onReboot: () -> Boolean
 ) {
     var introComplete by rememberSaveable { mutableStateOf(false) }
     val entered = remember { MutableTransitionState(false) }
@@ -73,7 +77,8 @@ fun WelcomeScreen(
         !introComplete -> WelcomeStep.INTRO
         rootStatus == CheckStatus.PASSED &&
             moduleStatus == CheckStatus.PASSED &&
-            xposedStatus == CheckStatus.PASSED -> WelcomeStep.COMPLETE
+            xposedStatus == CheckStatus.PASSED && rebootReady -> WelcomeStep.COMPLETE
+        rootStatus == CheckStatus.PASSED && moduleStatus == CheckStatus.PASSED && xposedStatus == CheckStatus.PASSED -> WelcomeStep.REBOOT
         rootStatus == CheckStatus.PASSED && moduleStatus == CheckStatus.PASSED -> WelcomeStep.XPOSED
         rootStatus == CheckStatus.PASSED -> WelcomeStep.MODULE
         else -> WelcomeStep.ROOT
@@ -102,6 +107,7 @@ fun WelcomeScreen(
                     WelcomeStep.ROOT -> Icons.Filled.Security
                     WelcomeStep.MODULE -> Icons.Filled.Extension
                     WelcomeStep.XPOSED -> Icons.Filled.Security
+                    WelcomeStep.REBOOT -> Icons.Filled.Security
                     WelcomeStep.COMPLETE -> Icons.Filled.CheckCircle
                 },
                 contentDescription = null,
@@ -130,6 +136,9 @@ fun WelcomeScreen(
                 moduleInstallMessage = moduleInstallMessage,
                 onContinue = onContinue,
                 onCheckXposed = onCheckXposed,
+                onSkipXposed = onSkipXposed,
+                rebootReady = rebootReady,
+                onReboot = onReboot,
                 onStart = { introComplete = true }
             )
         }
@@ -150,6 +159,9 @@ private fun StepContent(
     moduleInstallMessage: String?,
     onContinue: () -> Unit,
     onCheckXposed: () -> Unit,
+    onSkipXposed: () -> Unit,
+    rebootReady: Boolean,
+    onReboot: () -> Boolean,
     onStart: () -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -172,7 +184,7 @@ private fun StepContent(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
-                StatusText(rootStatus, stringResource(R.string.root_permission, rootImplementation.displayName))
+                StatusText(rootStatus, stringResource(R.string.root_permission))
                 ActionForStatus(
                     status = rootStatus,
                     actionLabel = stringResource(R.string.request_root),
@@ -222,6 +234,25 @@ private fun StepContent(
                     actionLabel = stringResource(R.string.recheck_xposed),
                     onClick = onCheckXposed
                 )
+                if (xposedStatus != CheckStatus.CHECKING && xposedStatus != CheckStatus.PASSED) {
+                    Button(onClick = onSkipXposed, modifier = Modifier.padding(top = 12.dp)) {
+                        Text(stringResource(R.string.skip_xposed))
+                    }
+                }
+            }
+            WelcomeStep.REBOOT -> {
+                Text(stringResource(R.string.reboot_required), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.reboot_required_summary), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 12.dp))
+                Text(stringResource(if (rebootReady) R.string.reboot_detected else R.string.reboot_pending), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
+                if (rebootReady) {
+                    Button(onClick = onContinue, modifier = Modifier.padding(top = 24.dp)) {
+                        Text(stringResource(R.string.enter_main))
+                    }
+                } else {
+                    Button(onClick = { onReboot() }, modifier = Modifier.padding(top = 24.dp)) {
+                        Text(stringResource(R.string.reboot_now))
+                    }
+                }
             }
             WelcomeStep.COMPLETE -> {
                 Text(stringResource(R.string.setup_complete), style = MaterialTheme.typography.headlineSmall)

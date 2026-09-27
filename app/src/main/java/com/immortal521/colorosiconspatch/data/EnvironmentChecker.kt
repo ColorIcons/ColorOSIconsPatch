@@ -126,6 +126,8 @@ fun moduleExists(moduleId: String): Boolean {
 
 fun commandSucceeds(command: String): Boolean = Shell.cmd(command).exec().isSuccess
 
+fun rebootDevice(): Boolean = Shell.cmd("reboot").exec().isSuccess
+
 private fun readStatus(value: String?): CheckStatus = try {
     value?.let(CheckStatus::valueOf) ?: CheckStatus.UNKNOWN
 } catch (_: IllegalArgumentException) {
