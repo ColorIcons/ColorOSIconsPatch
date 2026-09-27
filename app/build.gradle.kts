@@ -21,11 +21,27 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    val releaseSigning = listOf(
+        "releaseKeystore",
+        "releaseKeystorePassword",
+        "releaseKeyAlias",
+        "releaseKeyPassword"
+    ).map { providers.gradleProperty(it).orNull }
+    val hasReleaseSigning = releaseSigning.all { !it.isNullOrBlank() }
+    if (hasReleaseSigning) {
+        signingConfigs.create("release") {
+            storeFile = file(releaseSigning[0]!!)
+            storePassword = releaseSigning[1]
+            keyAlias = releaseSigning[2]
+            keyPassword = releaseSigning[3]
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = providers.gradleProperty("release.minify").map(String::toBoolean).getOrElse(true)
             isShrinkResources = providers.gradleProperty("release.shrinkResources").map(String::toBoolean).getOrElse(true)
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (hasReleaseSigning) "release" else "debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
