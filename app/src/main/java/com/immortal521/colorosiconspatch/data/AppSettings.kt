@@ -92,7 +92,7 @@ fun saveAppSettings(context: Context, settings: AppSettings) {
 }
 
 object AppSettingsState {
-    private val _settings = MutableStateFlow<AppSettings>(AppSettings())
+    private val _settings = MutableStateFlow(AppSettings())
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
     fun load(context: Context) { _settings.value = loadAppSettings(context) }
