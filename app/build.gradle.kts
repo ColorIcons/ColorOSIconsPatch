@@ -13,12 +13,22 @@ android {
         }
     }
 
+    val appVersion = providers.gradleProperty("release.version")
+        .map { it.removePrefix("v").substringBefore('-') }
+        .getOrElse("1.0.0")
+    val versionParts = appVersion.split('.').map { it.toIntOrNull() }
+    require(versionParts.size == 3 && versionParts.all { it != null && it >= 0 }) {
+        "release.version must use major.minor.patch, got: $appVersion"
+    }
+    val (major, minor, patch) = versionParts.map { it!! }
+    val appVersionCode = major * 1_000_000 + minor * 1_000 + patch
+
     defaultConfig {
         applicationId = "com.immortal521.colorosiconspatch"
         minSdk = 36
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
