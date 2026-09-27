@@ -8,7 +8,9 @@ plugins {
 android {
     namespace = "com.immortal521.colorosiconspatch"
     compileSdk {
-        version = release(37)
+        version = release(37) {
+            minorApiLevel = 0
+        }
     }
 
     defaultConfig {
