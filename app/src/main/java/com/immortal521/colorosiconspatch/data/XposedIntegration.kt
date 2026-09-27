@@ -10,7 +10,6 @@ import androidx.core.content.edit
 
 private const val APP_PACKAGE = "com.immortal521.colorosiconspatch"
 private const val REFRESH_ACTION = "$APP_PACKAGE.action.REFRESH_LAUNCHER_ICONS"
-private const val PING_ACTION = "$APP_PACKAGE.action.CHECK_LSPOSED"
 private val LAUNCHER_PACKAGES = listOf("com.android.launcher", "com.android.launcher3")
 
 fun sendLauncherRefresh(context: Context) {
@@ -31,6 +30,3 @@ suspend fun checkXposedActivation(context: Context): CheckStatus {
         }
     return status
 }
-
-internal const val xposedRefreshAction = REFRESH_ACTION
-internal const val xposedPingAction = PING_ACTION
