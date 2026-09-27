@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +26,7 @@ import com.immortal521.colorosiconspatch.data.rebootDevice
 import com.immortal521.colorosiconspatch.ui.screen.WelcomeScreen
 import androidx.core.content.edit
 import android.provider.Settings
+import androidx.compose.runtime.mutableLongStateOf
 
 private const val PREFERENCES = "onboarding"
 private const val COMPLETED = "completed"
@@ -72,7 +72,7 @@ private fun InitializationScreen(
     var moduleInstallMessage by remember { mutableStateOf<String?>(null) }
     var installRequested by remember { mutableStateOf(false) }
     var rebootRequiredBootCount by remember {
-        mutableStateOf(preferences.getLong(REBOOT_BOOT_COUNT, -1L))
+        mutableLongStateOf(preferences.getLong(REBOOT_BOOT_COUNT, -1L))
     }
     val currentBootCount = remember {
         Settings.Global.getLong(context.contentResolver, Settings.Global.BOOT_COUNT, -1L)
