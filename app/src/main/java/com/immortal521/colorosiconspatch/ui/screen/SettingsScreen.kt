@@ -59,6 +59,7 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,6 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.CHANNEL_CLOUDFLARE
 import com.immortal521.colorosiconspatch.data.DOWNLOAD_VARIANTS
@@ -407,35 +409,83 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
     val settings by AppSettingsState.settings.collectAsState()
     SettingsPageScaffold("下载设置", modifier, padding, onBack) {
         Text("下载通道", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
-        SegmentedColumn(content = listOf(
-            {
-                RadioItem("GitHub", settings.channel != CHANNEL_CLOUDFLARE) {
-                    AppSettingsState.update(context) { it.copy(channel = "github") }
+        SegmentedColumn(content = listOf({
+            SegmentedDropdownItem(
+                title = "下载通道",
+                summary = "选择图标索引的下载来源",
+                items = listOf("GitHub", "Cloudflare"),
+                selectedIndex = if (settings.channel == CHANNEL_CLOUDFLARE) 1 else 0,
+                onItemSelected = { index ->
+                    AppSettingsState.update(context) {
+                        it.copy(channel = if (index == 1) CHANNEL_CLOUDFLARE else "github")
+                    }
                 }
-            },
-            {
-                RadioItem("Cloudflare", settings.channel == CHANNEL_CLOUDFLARE) {
-                    AppSettingsState.update(context) { it.copy(channel = CHANNEL_CLOUDFLARE) }
-                }
-            }
-        ))
+            )
+        }))
         Text("下载性能", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
         SegmentedColumn(content = listOf({
+            val sliderState = rememberSliderState(
+                value = settings.concurrency.toFloat(),
+                steps = 21,
+                trackRange = 2f..24f
+            )
             SegmentedListItem(
                 shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
                 colors = settingsItemColors(),
-                content = { Text("并发数") },
-                supportingContent = { Text("同时下载的资源数量：${settings.concurrency}") },
-                trailingContent = { Box(contentAlignment = Alignment.Center) { Text(settings.concurrency.toString(), color = MaterialTheme.colorScheme.primary) } }
-            )
-            Slider(
-                value = settings.concurrency.toFloat(),
-                onValueChange = { value -> AppSettingsState.update(context) { it.copy(concurrency = value.toInt().coerceIn(1, 16)) } },
-                valueRange = 1f..16f,
-                steps = 14,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("并发数")
+                                Text(
+                                    "同时下载的资源数量",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                sliderState.value.roundToInt().toString(),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Slider(
+                            state = sliderState,
+                            onValueChangeFinished = {
+                                AppSettingsState.update(context) {
+                                    it.copy(concurrency = sliderState.value.roundToInt().coerceIn(2, 24))
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                verticalAlignment = Alignment.CenterVertically
             )
         }))
+        Text("图标种类", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        SegmentedColumn(
+            content = DOWNLOAD_VARIANTS.map { variant ->
+                {
+                    SwitchItem(
+                        title = variant.uppercase(),
+                        summary = "下载 ${variant.uppercase()} 图标资源",
+                        checked = variant in settings.variants,
+                        onClick = {
+                            AppSettingsState.update(context) { current ->
+                                val next = if (variant in current.variants) {
+                                    current.variants - variant
+                                } else {
+                                    current.variants + variant
+                                }
+                                current.copy(variants = next.takeIf { it.isNotEmpty() } ?: current.variants)
+                            }
+                        }
+                    )
+                }
+            }
+        )
     }
 }
 

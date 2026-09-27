@@ -59,7 +59,7 @@ fun loadAppSettings(context: Context): AppSettings {
         ?: DOWNLOAD_VARIANTS.toSet()
     return AppSettings(
         channel = prefs.getString(KEY_CHANNEL, CHANNEL_GITHUB) ?: CHANNEL_GITHUB,
-        concurrency = prefs.getInt(KEY_CONCURRENCY, 8).coerceIn(1, 16),
+        concurrency = prefs.getInt(KEY_CONCURRENCY, 8).coerceIn(2, 24),
         variants = variants,
         theme = runCatching { ThemeMode.valueOf(prefs.getString(KEY_THEME, ThemeMode.SYSTEM.name)!!) }
             .getOrDefault(ThemeMode.SYSTEM),
