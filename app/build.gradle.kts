@@ -16,16 +16,44 @@ android {
         minSdk = 36
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            optimization {
-                enable = false
+            isMinifyEnabled = providers.gradleProperty("release.minify").map(String::toBoolean).getOrElse(true)
+            isShrinkResources = providers.gradleProperty("release.shrinkResources").map(String::toBoolean).getOrElse(true)
+            signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    val releaseAbis = providers.gradleProperty("release.abis").orNull
+        ?.split(',')
+        ?.map(String::trim)
+        ?.filter(String::isNotEmpty)
+        .orEmpty()
+    if (releaseAbis.isNotEmpty()) {
+        defaultConfig {
+            ndk {
+                abiFilters += releaseAbis
             }
+        }
+    }
+
+    val releaseLocales = providers.gradleProperty("release.locales").orNull
+        ?.split(',')
+        ?.map(String::trim)
+        ?.filter(String::isNotEmpty)
+        .orEmpty()
+    if (releaseLocales.isNotEmpty()) {
+        androidResources {
+            localeFilters += releaseLocales
         }
     }
     compileOptions {

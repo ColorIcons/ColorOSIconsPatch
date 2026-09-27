@@ -1,0 +1,2 @@
+-keep class com.immortal521.colorosiconspatch.xposed.MainModule { *; }
+-keepattributes *Annotation*,InnerClasses,EnclosingMethod,Signature
