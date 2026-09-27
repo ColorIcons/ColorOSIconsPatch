@@ -5,13 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
@@ -23,11 +23,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -38,9 +38,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.InstalledApp
 
@@ -65,17 +64,17 @@ fun AppsScreen(
     val visibleApps = apps?.asSequence()
         ?.filter {
             (it.userId == 0 || showOtherUserApps) &&
-                (showSystemApps || !it.isSystem)
+                    (showSystemApps || !it.isSystem)
         }
         ?.filter {
             searchText.isBlank() || it.label.contains(searchText, ignoreCase = true) ||
-                it.packageName.contains(searchText, ignoreCase = true)
+                    it.packageName.contains(searchText, ignoreCase = true)
         }
         ?.sortedWith(
             when (sortBy) {
                 AppSort.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.label }
                 AppSort.PACKAGE -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.packageName }
-                AppSort.RECENT -> compareByDescending<InstalledApp> { it.installTime }
+                AppSort.RECENT -> compareByDescending { it.installTime }
             }
         )
         ?.toList()
@@ -88,7 +87,10 @@ fun AppsScreen(
         actions = {
             Box {
                 IconButton(onClick = { sortMenuVisible = true }) {
-                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
+                    Icon(
+                        Icons.AutoMirrored.Filled.Sort,
+                        contentDescription = stringResource(R.string.sort)
+                    )
                 }
                 DropdownMenu(
                     expanded = sortMenuVisible,
@@ -128,7 +130,10 @@ fun AppsScreen(
             }
             Box {
                 IconButton(onClick = { filterMenuVisible = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.filter_apps))
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.filter_apps)
+                    )
                 }
                 DropdownMenu(
                     expanded = filterMenuVisible,
@@ -166,17 +171,21 @@ fun AppsScreen(
                 trailingIcon = {
                     if (searchText.isNotEmpty()) {
                         IconButton(onClick = { searchText = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.clear_search)
+                            )
                         }
                     }
                 }
             )
-            when (val currentApps = visibleApps) {
+            when (visibleApps) {
                 null -> LoadingIndicator(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                         .padding(top = 8.dp)
                 )
+
                 else -> {
                     val pullToRefreshState = rememberPullToRefreshState()
                     PullToRefreshBox(
@@ -195,20 +204,33 @@ fun AppsScreen(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(2.dp),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                bottom = 16.dp
+                            )
                         ) {
                             item {
                                 indexError?.let {
                                     Text(
                                         text = it,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                        modifier = Modifier.padding(
+                                            horizontal = 8.dp,
+                                            vertical = 8.dp
+                                        ),
                                         color = MaterialTheme.colorScheme.tertiary,
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }
                             }
-                            itemsIndexed(currentApps, key = { _, app -> app.packageName }) { index, app ->
-                                AppRow(app, index = index, count = currentApps.size, onClick = { onAppClick(app) })
+                            itemsIndexed(
+                                visibleApps,
+                                key = { _, app -> app.packageName }) { index, app ->
+                                AppRow(
+                                    app,
+                                    index = index,
+                                    count = visibleApps.size,
+                                    onClick = { onAppClick(app) })
                             }
                         }
                     }
