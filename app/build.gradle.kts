@@ -15,7 +15,7 @@ android {
 
     val appVersion = providers.gradleProperty("release.version")
         .map { it.removePrefix("v").substringBefore('-') }
-        .getOrElse("1.0.5")
+        .getOrElse("1.1.0")
     val versionParts = appVersion.split('.').map { it.toIntOrNull() }
     require(versionParts.size == 3 && versionParts.all { it != null && it >= 0 }) {
         "release.version must use major.minor.patch, got: $appVersion"
