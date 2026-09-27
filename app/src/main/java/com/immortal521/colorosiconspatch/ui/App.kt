@@ -1,5 +1,8 @@
 package com.immortal521.colorosiconspatch.ui
 
+import android.content.Context
+import android.content.IntentFilter
+import android.os.Parcelable
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -20,26 +24,36 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.IconIndexLoadResult
-import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
+import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.InstalledApp
+import com.immortal521.colorosiconspatch.data.PackageChangeReceiver
 import com.immortal521.colorosiconspatch.data.buildIconSyncPlan
 import com.immortal521.colorosiconspatch.data.loadIconIndex
-import com.immortal521.colorosiconspatch.data.syncIconResources
 import com.immortal521.colorosiconspatch.data.loadInstalledApps
-import com.immortal521.colorosiconspatch.data.PackageChangeReceiver
 import com.immortal521.colorosiconspatch.data.sendLauncherRefresh
+import com.immortal521.colorosiconspatch.data.syncIconResources
 import com.immortal521.colorosiconspatch.ui.navigation.MainNavigationBar
 import com.immortal521.colorosiconspatch.ui.onboarding.InitializationFlow
 import com.immortal521.colorosiconspatch.ui.screen.AppsScreen
+import com.immortal521.colorosiconspatch.ui.screen.DownloadSettingsScreen
 import com.immortal521.colorosiconspatch.ui.screen.HomeScreen
+import com.immortal521.colorosiconspatch.ui.screen.SettingsPage
 import com.immortal521.colorosiconspatch.ui.screen.SettingsScreen
+import com.immortal521.colorosiconspatch.ui.screen.ThemeSettingsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.content.Context
-import android.content.IntentFilter
+import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
+import top.yukonga.miuix.kmp.nav.core.NavDisplay
+import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
+import top.yukonga.miuix.kmp.nav.core.NavKey
+import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
+import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
+import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
 
 @Composable
 fun App() {
@@ -48,8 +62,51 @@ fun App() {
     }
 }
 
+@Serializable
+@Parcelize
+private sealed interface AppRoute : NavKey, Parcelable {
+    @Serializable
+    @Parcelize
+    data object Main : AppRoute
+
+    @Serializable
+    @Parcelize
+    data object ThemeSettings : AppRoute
+
+    @Serializable
+    @Parcelize
+    data object DownloadSettings : AppRoute
+}
+
 @Composable
 private fun MainContent() {
+    val backStack = rememberNavBackStack<AppRoute>(AppRoute.Main)
+
+    NavDisplay(
+        backStack = backStack,
+        effects = NavDisplayEffects(cornerClipRadius = rememberNavSystemCornerRadius()),
+        onBack = { if (backStack.size > 1) backStack.removeLastOrNull() }
+    ) {
+        entry<AppRoute.Main>(swipeDismiss = NavSwipeDirection.LeftToRight) {
+            MainPagerScreen { page ->
+                when (page) {
+                    SettingsPage.THEME -> backStack.add(AppRoute.ThemeSettings)
+                    SettingsPage.DOWNLOAD -> backStack.add(AppRoute.DownloadSettings)
+                    SettingsPage.ROOT -> Unit
+                }
+            }
+        }
+        entry<AppRoute.ThemeSettings>(swipeDismiss = NavSwipeDirection.LeftToRight) {
+            ThemeSettingsScreen(onBack = { backStack.removeLastOrNull() })
+        }
+        entry<AppRoute.DownloadSettings>(swipeDismiss = NavSwipeDirection.LeftToRight) {
+            DownloadSettingsScreen(onBack = { backStack.removeLastOrNull() })
+        }
+    }
+}
+
+@Composable
+private fun MainPagerScreen(onOpenSettingsPage: (SettingsPage) -> Unit) {
     val context = LocalContext.current
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val pagerState = rememberPagerState(initialPage = selectedTab) { 3 }
@@ -61,9 +118,12 @@ private fun MainContent() {
     var syncProgress by remember { mutableStateOf<IconSyncProgress?>(null) }
     var syncError by remember { mutableStateOf<String?>(null) }
     var syncing by remember { mutableStateOf(false) }
+    val appSettings by AppSettingsState.settings.collectAsState()
 
     suspend fun refreshSyncPlan() {
-        val index = withContext(Dispatchers.IO) { loadIconIndex(context) }
+        val index = withContext(Dispatchers.IO) {
+            loadIconIndex(context, appSettings.indexUrl, appSettings.variants)
+        }
         iconIndexError = index.error
         iconIndex = index
         val apps = withContext(Dispatchers.IO) {
@@ -75,7 +135,7 @@ private fun MainContent() {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(appSettings.channel, appSettings.variants) {
         refreshSyncPlan()
     }
 
@@ -87,7 +147,11 @@ private fun MainContent() {
                 }
             }
         }
-        context.registerReceiver(receiver, IntentFilter(PackageChangeReceiver.ACTION_PACKAGE_SET_CHANGED), Context.RECEIVER_NOT_EXPORTED)
+        context.registerReceiver(
+            receiver,
+            IntentFilter(PackageChangeReceiver.ACTION_PACKAGE_SET_CHANGED),
+            Context.RECEIVER_NOT_EXPORTED
+        )
         onDispose { context.unregisterReceiver(receiver) }
     }
 
@@ -106,9 +170,9 @@ private fun MainContent() {
         bottomBar = {
             MainNavigationBar(
                 selectedTab = selectedTab,
-                onTabSelected = {
-                    selectedTab = it
-                    pagerScope.launch { pagerState.animateScrollToPage(it) }
+                onTabSelected = { tab ->
+                    selectedTab = tab
+                    pagerScope.launch { pagerState.animateScrollToPage(tab) }
                 }
             )
         }
@@ -154,12 +218,17 @@ private fun MainContent() {
                         }
                     }
                 )
+
                 1 -> AppsScreen(
                     apps = installedApps,
                     indexError = iconIndexError,
                     contentPadding = mainContentPadding
                 )
-                2 -> SettingsScreen(contentPadding = mainContentPadding)
+
+                2 -> SettingsScreen(
+                    contentPadding = mainContentPadding,
+                    onOpen = onOpenSettingsPage
+                )
             }
         }
     }

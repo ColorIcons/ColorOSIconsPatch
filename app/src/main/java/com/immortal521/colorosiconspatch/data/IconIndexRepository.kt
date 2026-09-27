@@ -12,7 +12,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-private const val INDEX_URL = "https://immortal521.github.io/icons/index.json"
+private const val DEFAULT_INDEX_URL = GITHUB_INDEX_URL
 private const val INDEX_CACHE = "icon-index.json"
 private const val CONNECT_TIMEOUT_MS = 10_000
 private const val READ_TIMEOUT_MS = 15_000
@@ -40,12 +40,16 @@ data class IconIndexLoadResult(
         get() = packages.keys
 }
 
-fun loadIconIndex(context: Context): IconIndexLoadResult {
+fun loadIconIndex(
+    context: Context,
+    indexUrl: String = DEFAULT_INDEX_URL,
+    enabledVariants: Set<String> = DOWNLOAD_VARIANTS.toSet()
+): IconIndexLoadResult {
     val cache = File(context.filesDir, INDEX_CACHE)
     return try {
-        val json = downloadIndex()
+        val json = downloadIndex(indexUrl)
         cache.writeText(json)
-        parseIndex(json).let { (requiredFiles, packages) ->
+        parseIndex(json, enabledVariants).let { (requiredFiles, packages) ->
             IconIndexLoadResult(
                 packages = packages,
                 requiredFiles = requiredFiles
@@ -56,7 +60,7 @@ fun loadIconIndex(context: Context): IconIndexLoadResult {
             IconIndexLoadResult(emptyMap(), error = "图标索引读取失败")
         } else {
             try {
-                parseIndex(cache.readText()).let { (requiredFiles, packages) ->
+                parseIndex(cache.readText(), enabledVariants).let { (requiredFiles, packages) ->
                     IconIndexLoadResult(
                         packages = packages,
                         requiredFiles = requiredFiles,
@@ -70,8 +74,8 @@ fun loadIconIndex(context: Context): IconIndexLoadResult {
     }
 }
 
-private fun downloadIndex(): String {
-    val connection = URL(INDEX_URL).openConnection() as HttpURLConnection
+private fun downloadIndex(indexUrl: String): String {
+    val connection = URL(indexUrl).openConnection() as HttpURLConnection
     return try {
         connection.connectTimeout = CONNECT_TIMEOUT_MS
         connection.readTimeout = READ_TIMEOUT_MS
@@ -84,7 +88,10 @@ private fun downloadIndex(): String {
     }
 }
 
-private fun parseIndex(json: String): Pair<List<IconFile>, Map<String, IconPackage>> {
+private fun parseIndex(
+    json: String,
+    enabledVariants: Set<String>
+): Pair<List<IconFile>, Map<String, IconPackage>> {
     val root = JSONObject(json)
     val requiredFiles = buildList {
         addFiles(root.optJSONArray("required_files"))
@@ -100,7 +107,10 @@ private fun parseIndex(json: String): Pair<List<IconFile>, Map<String, IconPacka
                 val variants = packageJson.optJSONObject("variants") ?: return@buildList
                 val variantKeys = variants.keys()
                 while (variantKeys.hasNext()) {
-                    addFiles(variants.optJSONArray(variantKeys.next()))
+                    val variant = variantKeys.next()
+                    if (variant in enabledVariants) {
+                        addFiles(variants.optJSONArray(variant))
+                    }
                 }
             }
             if (files.isNotEmpty()) put(packageName, IconPackage(packageName, files.distinctBy { it.name }))
@@ -195,7 +205,9 @@ suspend fun syncIconResources(
     val totalApps = apps.size
     val completedMutex = Mutex()
     var completedApps = 0
-    val downloadDispatcher = Dispatchers.IO.limitedParallelism(8)
+    val downloadDispatcher = Dispatchers.IO.limitedParallelism(
+        loadAppSettings(context).concurrency
+    )
 
     val results = apps.map { packageName ->
         async(downloadDispatcher) {
@@ -209,7 +221,11 @@ suspend fun syncIconResources(
                 val temporary = File.createTempFile("icon-", ".png", context.cacheDir)
                 try {
                     onProgress(IconSyncProgress(completedApps, totalApps, packageName, update.file.name))
-                    downloadFile(update.file.path, temporary)
+                    downloadFile(
+                        update.file.path,
+                        temporary,
+                        loadAppSettings(context).indexUrl.removeSuffix("/index.json")
+                    )
                     check(sha256(temporary) == update.file.sha256) {
                         "图标校验失败：${update.file.path}"
                     }
@@ -269,8 +285,8 @@ private fun removeStaleRootFiles(keep: Set<String>, installedPackages: Set<Strin
     runRoot(command)
 }
 
-private fun downloadFile(path: String, output: File) {
-    val connection = URL("https://immortal521.github.io/icons/$path").openConnection() as HttpURLConnection
+private fun downloadFile(path: String, output: File, baseUrl: String) {
+    val connection = URL("$baseUrl/$path").openConnection() as HttpURLConnection
     try {
         connection.connectTimeout = CONNECT_TIMEOUT_MS
         connection.readTimeout = READ_TIMEOUT_MS
