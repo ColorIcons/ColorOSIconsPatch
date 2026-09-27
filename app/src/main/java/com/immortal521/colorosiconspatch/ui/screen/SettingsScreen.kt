@@ -73,11 +73,11 @@ import androidx.core.net.toUri
 import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.CHANNEL_CLOUDFLARE
-import com.immortal521.colorosiconspatch.data.DOWNLOAD_VARIANTS
 import com.immortal521.colorosiconspatch.data.ThemeMode
 import com.immortal521.colorosiconspatch.data.UpdateDownloadCleanup
 import com.immortal521.colorosiconspatch.data.setAppLanguage
 import com.immortal521.colorosiconspatch.data.setPredictiveBackEnabled
+import com.immortal521.colorosiconspatch.data.supportedDownloadVariants
 import com.immortal521.colorosiconspatch.ui.component.material.ExpressiveToggleButton
 import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
 import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
@@ -618,7 +618,7 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
             modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
         )
         SegmentedColumn(
-            content = DOWNLOAD_VARIANTS.map { variant ->
+            content = supportedDownloadVariants().map { variant ->
                 {
                     SwitchItem(
                         title = variant.uppercase(),

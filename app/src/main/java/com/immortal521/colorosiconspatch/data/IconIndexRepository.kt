@@ -38,7 +38,7 @@ fun loadCachedIconPackage(context: Context, packageName: String): IconPackage? {
     val cache = File(context.filesDir, INDEX_CACHE)
     if (!cache.isFile) return null
     return runCatching {
-        parseIndex(cache.readText(), DOWNLOAD_VARIANTS.toSet()).second[packageName]
+        parseIndex(cache.readText(), supportedDownloadVariants().toSet()).second[packageName]
     }.getOrNull()
 }
 
@@ -68,13 +68,14 @@ data class IconIndexLoadResult(
 fun loadIconIndex(
     context: Context,
     indexUrl: String = DEFAULT_INDEX_URL,
-    enabledVariants: Set<String> = DOWNLOAD_VARIANTS.toSet()
+    enabledVariants: Set<String> = supportedDownloadVariants().toSet()
 ): IconIndexLoadResult {
     val cache = File(context.filesDir, INDEX_CACHE)
+    val supportedVariants = enabledVariants.intersect(supportedDownloadVariants().toSet())
     return try {
         val json = downloadIndex(indexUrl)
         cache.writeText(json)
-        parseIndex(json, enabledVariants).let { (requiredFiles, packages) ->
+        parseIndex(json, supportedVariants).let { (requiredFiles, packages) ->
             IconIndexLoadResult(
                 packages = packages,
                 requiredFiles = requiredFiles
@@ -88,7 +89,7 @@ fun loadIconIndex(
             )
         } else {
             try {
-                parseIndex(cache.readText(), enabledVariants).let { (requiredFiles, packages) ->
+                parseIndex(cache.readText(), supportedVariants).let { (requiredFiles, packages) ->
                     IconIndexLoadResult(
                         packages = packages,
                         requiredFiles = requiredFiles,
@@ -157,14 +158,16 @@ private fun MutableList<IconFile>.addFiles(array: org.json.JSONArray?) {
     if (array == null) return
     for (index in 0 until array.length()) {
         val file = array.getJSONObject(index)
-        add(
-            IconFile(
-                name = file.getString("file"),
-                path = file.getString("path"),
-                sha256 = file.getString("sha256"),
-                size = file.optLong("size", 0L)
+        if (filterSupportedIconFileName(file.getString("file"))) {
+            add(
+                IconFile(
+                    name = file.getString("file"),
+                    path = file.getString("path"),
+                    sha256 = file.getString("sha256"),
+                    size = file.optLong("size", 0L)
+                )
             )
-        )
+        }
     }
 }
 

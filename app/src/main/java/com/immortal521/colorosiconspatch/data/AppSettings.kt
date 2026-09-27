@@ -1,5 +1,6 @@
 package com.immortal521.colorosiconspatch.data
 
+import android.annotation.SuppressLint
 import android.app.LocaleManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -30,6 +31,70 @@ const val GITHUB_INDEX_URL = "https://coloricons.github.io/icons/index.json"
 const val CLOUDFLARE_INDEX_URL = "https://icons.immort.top/index.json"
 
 val DOWNLOAD_VARIANTS = listOf("monet", "light", "dark", "mat")
+private val LEGACY_COLOROS_VARIANTS = setOf("dark")
+private val LEGACY_COLOROS_SIZES = setOf("1x2", "2x2", "2x1")
+
+fun supportsExtendedIconResources(): Boolean {
+    val version = listOf(
+        "ro.build.version.oplusrom",
+        "ro.build.version.opporom",
+        "ro.build.version.coloros"
+    ).asSequence()
+        .map(SystemProperties::get).firstNotNullOfOrNull(::colorOsMajorVersion)
+        ?: if (isOplusDevice()) colorOsMajorVersion(Build.DISPLAY) else null
+    return version == null || version >= 16
+}
+
+private fun isOplusDevice(): Boolean {
+    val manufacturer = Build.MANUFACTURER.lowercase()
+    val brand = Build.BRAND.lowercase()
+    return sequenceOf(manufacturer, brand).any { value ->
+        value == "oppo" || value == "oneplus" || value == "realme" ||
+                value.contains("oplus")
+    }
+}
+
+private fun colorOsMajorVersion(value: String): Int? {
+    if (value.isBlank()) return null
+    return Regex("(?i)(?:coloros|oplus|oppo|realme|oxygen|hydrogen|v)\\s*([0-9]{1,2})(?:\\.|\\s|$)")
+        .find(value)
+        ?.groupValues
+        ?.get(1)
+        ?.toIntOrNull()
+}
+
+fun supportedDownloadVariants(): List<String> =
+    if (supportsExtendedIconResources()) DOWNLOAD_VARIANTS
+    else DOWNLOAD_VARIANTS.filterNot(LEGACY_COLOROS_VARIANTS::contains)
+
+fun filterSupportedIconFileName(name: String): Boolean {
+    if (supportsExtendedIconResources()) return true
+    if (name.startsWith("rec_night")) return false
+    return LEGACY_COLOROS_SIZES.none { Regex("_${it}(?:\\.|$)").containsMatchIn(name) }
+}
+
+private object SystemProperties {
+    @SuppressLint("PrivateApi")
+    fun get(name: String): String {
+        val reflected = runCatching {
+            Class.forName("android.os.SystemProperties")
+                .getDeclaredMethod("get", String::class.java)
+                .invoke(null, name) as? String
+        }.getOrNull().orEmpty()
+        if (reflected.isNotBlank()) return reflected
+
+        return runCatching {
+            val process = ProcessBuilder("getprop", name)
+                .redirectErrorStream(true)
+                .start()
+            try {
+                process.inputStream.bufferedReader().use { it.readText().trim() }
+            } finally {
+                process.destroy()
+            }
+        }.getOrNull().orEmpty()
+    }
+}
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
@@ -53,10 +118,11 @@ private fun Context.settingsPrefs() = getSharedPreferences(PREFS, Context.MODE_P
 
 fun loadAppSettings(context: Context): AppSettings {
     val prefs = context.settingsPrefs()
-    val variants = prefs.getStringSet(KEY_VARIANTS, DOWNLOAD_VARIANTS.toSet())
-        ?.intersect(DOWNLOAD_VARIANTS.toSet())
-        ?.ifEmpty { DOWNLOAD_VARIANTS.toSet() }
-        ?: DOWNLOAD_VARIANTS.toSet()
+    val availableVariants = supportedDownloadVariants().toSet()
+    val variants = prefs.getStringSet(KEY_VARIANTS, availableVariants)
+        ?.intersect(availableVariants)
+        ?.ifEmpty { availableVariants }
+        ?: availableVariants
     return AppSettings(
         channel = prefs.getString(KEY_CHANNEL, CHANNEL_GITHUB) ?: CHANNEL_GITHUB,
         concurrency = prefs.getInt(KEY_CONCURRENCY, 8).coerceIn(2, 24),
