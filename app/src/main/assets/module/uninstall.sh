@@ -12,7 +12,7 @@ for target in \
   /my_stock/media/theme/uxicons/xxhdpi \
   /my_stock/media/theme/uxicons/xxxhdpi; do
   mountpoint -q "$target" 2>/dev/null && umount "$target" 2>/dev/null
- done
+done
 
 # Remove generated links and persistent icon data from current and legacy locations.
 [ -L "$MODPATH/uxicons" ] && rm -f "$MODPATH/uxicons"
