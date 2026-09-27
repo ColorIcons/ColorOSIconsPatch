@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
@@ -62,7 +63,8 @@ fun HomeScreen(
     syncing: Boolean = false,
     error: String? = null,
     onSync: () -> Unit = {},
-    onRefreshLauncher: () -> Unit = {}
+    onRefreshLauncher: () -> Unit = {},
+    onOpenLogs: () -> Unit = {}
 ) {
     var showRefreshConfirmation by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -127,6 +129,23 @@ fun HomeScreen(
                 deviceModel = deviceModel,
                 kernelVersion = kernelVersion
             )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onOpenLogs,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Description, contentDescription = null)
+                    Text(
+                        stringResource(R.string.logs),
+                        modifier = Modifier.padding(start = 16.dp),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
         }
     }
 

@@ -44,6 +44,7 @@ import com.immortal521.colorosiconspatch.ui.screen.AppDetailScreen
 import com.immortal521.colorosiconspatch.ui.screen.AppsScreen
 import com.immortal521.colorosiconspatch.ui.screen.DownloadSettingsScreen
 import com.immortal521.colorosiconspatch.ui.screen.HomeScreen
+import com.immortal521.colorosiconspatch.ui.screen.LogScreen
 import com.immortal521.colorosiconspatch.ui.screen.SettingsPage
 import com.immortal521.colorosiconspatch.ui.screen.SettingsScreen
 import com.immortal521.colorosiconspatch.ui.screen.ThemeSettingsScreen
@@ -83,6 +84,10 @@ private sealed interface AppRoute : NavKey, Parcelable {
 
     @Serializable
     @Parcelize
+    data object Logs : AppRoute
+
+    @Serializable
+    @Parcelize
     data class AppDetail(val packageName: String) : AppRoute
 }
 
@@ -104,7 +109,8 @@ private fun MainContent() {
                         SettingsPage.ROOT -> Unit
                     }
                 },
-                onOpenApp = { app -> backStack.add(AppRoute.AppDetail(app.packageName)) }
+                onOpenApp = { app -> backStack.add(AppRoute.AppDetail(app.packageName)) },
+                onOpenLogs = { backStack.add(AppRoute.Logs) }
             )
         }
         entry<AppRoute.ThemeSettings>(swipeDismiss = NavSwipeDirection.LeftToRight) {
@@ -112,6 +118,9 @@ private fun MainContent() {
         }
         entry<AppRoute.DownloadSettings>(swipeDismiss = NavSwipeDirection.LeftToRight) {
             DownloadSettingsScreen(onBack = { backStack.removeLastOrNull() })
+        }
+        entry<AppRoute.Logs>(swipeDismiss = NavSwipeDirection.LeftToRight) {
+            LogScreen(onBack = { backStack.removeLastOrNull() })
         }
         entry<AppRoute.AppDetail>(swipeDismiss = NavSwipeDirection.LeftToRight) { route ->
             AppDetailScreen(
@@ -125,7 +134,8 @@ private fun MainContent() {
 @Composable
 private fun MainPagerScreen(
     onOpenSettingsPage: (SettingsPage) -> Unit,
-    onOpenApp: (InstalledApp) -> Unit
+    onOpenApp: (InstalledApp) -> Unit,
+    onOpenLogs: () -> Unit
 ) {
     val context = LocalContext.current
     val moduleUpdateFailedMessage = stringResource(R.string.module_update_failed)
@@ -225,6 +235,7 @@ private fun MainPagerScreen(
                     syncing = syncing,
                     error = syncError,
                     onRefreshLauncher = { sendLauncherRefresh(context) },
+                    onOpenLogs = onOpenLogs,
                     onSync = {
                         val apps = installedApps ?: return@HomeScreen
                         val index = iconIndex ?: return@HomeScreen

@@ -26,7 +26,7 @@ class MainModule : XposedModule() {
     }
 
     override fun onModuleLoaded(param: XposedModuleInterface.ModuleLoadedParam) {
-        log(Log.INFO, TAG, "Module loaded in ${param.processName}")
+        writeLog(Log.INFO, "Module loaded in ${param.processName}")
     }
 
     override fun onPackageLoaded(param: XposedModuleInterface.PackageLoadedParam) {
@@ -49,7 +49,7 @@ class MainModule : XposedModule() {
                 if (context != null) {
                     launcherRef = WeakReference(context)
                     registerReceiver(context)
-                    log(Log.INFO, TAG, "Launcher application captured: $packageName")
+                    writeLog(Log.INFO, "Launcher application captured: $packageName")
                 }
                 result
             }
@@ -69,9 +69,9 @@ class MainModule : XposedModule() {
                 }
                 result
             }
-            log(Log.INFO, TAG, "Hooks installed for $packageName")
+            writeLog(Log.INFO, "Hooks installed for $packageName")
         } catch (error: Throwable) {
-            log(Log.ERROR, TAG, "Failed to hook $packageName", error)
+            writeLog(Log.ERROR, "Failed to hook $packageName", error)
         }
     }
 
@@ -108,9 +108,9 @@ class MainModule : XposedModule() {
                 Context.RECEIVER_EXPORTED
             )
             receiver = refreshReceiver
-            log(Log.INFO, TAG, "Refresh receiver registered")
+            writeLog(Log.INFO, "Refresh receiver registered")
         } catch (_: Throwable) {
-            log(Log.ERROR, TAG, "Failed to register refresh receiver")
+            writeLog(Log.ERROR, "Failed to register refresh receiver")
         }
     }
 
@@ -123,11 +123,30 @@ class MainModule : XposedModule() {
             val refresh = appStateClass.getDeclaredMethod("refreshAndReloadLauncher")
             refresh.isAccessible = true
             refresh.invoke(appState)
-            log(Log.INFO, TAG, "Launcher icons refreshed")
+            writeLog(Log.INFO, "Launcher icons refreshed")
         } catch (_: NoSuchMethodException) {
             refreshWithModelFallback(context)
         } catch (error: Throwable) {
-            log(Log.ERROR, TAG, "Failed to refresh launcher icons", error)
+            writeLog(Log.ERROR, "Failed to refresh launcher icons", error)
+        }
+    }
+
+    private fun writeLog(level: Int, message: String, error: Throwable? = null) {
+        log(level, TAG, message, error)
+        val context = launcherRef.get() ?: return
+        runCatching {
+            context.sendBroadcast(Intent("com.immortal521.colorosiconspatch.action.LSPOSED_LOG").apply {
+                setPackage("com.immortal521.colorosiconspatch")
+                putExtra(
+                    "level", when (level) {
+                        Log.ERROR -> "ERROR"
+                        Log.WARN -> "WARN"
+                        Log.DEBUG -> "DEBUG"
+                        else -> "INFO"
+                    }
+                )
+                putExtra("message", if (error == null) message else "$message: ${error.message}")
+            })
         }
     }
 
@@ -137,9 +156,9 @@ class MainModule : XposedModule() {
             val appState = appStateClass.getMethod("getInstance", Context::class.java).invoke(null, context)
             val model = appStateClass.getMethod("getModel").invoke(appState)
             model.javaClass.getMethod("forceReload").invoke(model)
-            log(Log.INFO, TAG, "Launcher model reloaded")
+            writeLog(Log.INFO, "Launcher model reloaded")
         } catch (error: Throwable) {
-            log(Log.ERROR, TAG, "Launcher model reload failed", error)
+            writeLog(Log.ERROR, "Launcher model reload failed", error)
         }
     }
 }

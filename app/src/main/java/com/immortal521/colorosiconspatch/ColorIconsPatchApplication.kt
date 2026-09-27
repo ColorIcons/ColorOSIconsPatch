@@ -1,6 +1,17 @@
 package com.immortal521.colorosiconspatch
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
+import com.immortal521.colorosiconspatch.data.ACTION_LSPOSED_LOG
+import com.immortal521.colorosiconspatch.data.EXTRA_LOG_LEVEL
+import com.immortal521.colorosiconspatch.data.EXTRA_LOG_MESSAGE
+import com.immortal521.colorosiconspatch.data.LogCategory
+import com.immortal521.colorosiconspatch.data.LogLevel
+import com.immortal521.colorosiconspatch.data.LogStore
 import com.immortal521.colorosiconspatch.data.UpdateDownloadCleanup
 import com.immortal521.colorosiconspatch.data.XposedServiceState
 import com.immortal521.colorosiconspatch.data.loadAppSettings
@@ -17,10 +28,29 @@ class ColorIconsPatchApplication : Application(), XposedServiceHelper.OnServiceL
     override fun onCreate() {
         super.onCreate()
         setPredictiveBackEnabled(this, loadAppSettings(this).predictiveBack)
+        LogStore.info(this, "Application started")
         UpdateDownloadCleanup.clear(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             updateInstalledModuleMetadata(this@ColorIconsPatchApplication)
         }
+        registerReceiver(
+            object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    if (intent.action != ACTION_LSPOSED_LOG) return
+                    val level = runCatching {
+                        LogLevel.valueOf(intent.getStringExtra(EXTRA_LOG_LEVEL).orEmpty())
+                    }.getOrDefault(LogLevel.INFO)
+                    LogStore.append(
+                        context,
+                        LogCategory.LSPOSED,
+                        level,
+                        intent.getStringExtra(EXTRA_LOG_MESSAGE).orEmpty()
+                    )
+                }
+            },
+            IntentFilter(ACTION_LSPOSED_LOG),
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) RECEIVER_EXPORTED else 0
+        )
         XposedServiceHelper.registerListener(this)
     }
 
