@@ -75,6 +75,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.immortal521.colorosiconspatch.R
 import kotlin.math.roundToInt
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.CHANNEL_CLOUDFLARE
@@ -123,21 +125,33 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
     var checking by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val languages = listOf("系统默认" to "", "简体中文" to "zh-CN", "English" to "en")
+    val languages = listOf(
+        stringResource(R.string.system_default) to "",
+        stringResource(R.string.simplified_chinese) to "zh-CN",
+        stringResource(R.string.traditional_chinese) to "zh-TW",
+        stringResource(R.string.english) to "en",
+        stringResource(R.string.japanese) to "ja",
+        stringResource(R.string.korean) to "ko",
+        stringResource(R.string.spanish) to "es",
+        stringResource(R.string.french) to "fr",
+        stringResource(R.string.german) to "de",
+        stringResource(R.string.russian) to "ru",
+        stringResource(R.string.portuguese) to "pt"
+    )
 
-    SettingsPageScaffold("设置", modifier, padding, null) {
+    SettingsPageScaffold(stringResource(R.string.settings), modifier, padding, null) {
         SegmentedColumn(content = listOf(
             {
-                SwitchItem(Icons.Filled.SystemUpdate, "启动时自动检查", "应用启动时检查 GitHub Releases", settings.autoCheckUpdates) {
+                SwitchItem(Icons.Filled.SystemUpdate, stringResource(R.string.auto_check_updates), stringResource(R.string.auto_check_updates_summary), settings.autoCheckUpdates) {
                     AppSettingsState.update(context) { it.copy(autoCheckUpdates = !it.autoCheckUpdates) }
                 }
             },
             {
-                ActionItem(Icons.Filled.SystemUpdate, "检查应用更新", result ?: "手动检查 GitHub Releases 是否有新版本", onClick = {
+                ActionItem(Icons.Filled.SystemUpdate, stringResource(R.string.check_updates), result ?: stringResource(R.string.check_updates_summary), onClick = {
                     checking = true
                     result = null
                     scope.launch {
-                        result = withContext(Dispatchers.IO) { checkForUpdate() }
+                        result = withContext(Dispatchers.IO) { checkForUpdate(context) }
                         checking = false
                     }
                 }) {
@@ -146,25 +160,25 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
                             checking = true
                             result = null
                             scope.launch {
-                                result = withContext(Dispatchers.IO) { checkForUpdate() }
+                                result = withContext(Dispatchers.IO) { checkForUpdate(context) }
                                 checking = false
                             }
                         },
                         enabled = !checking
-                    ) { Text(if (checking) "检查中" else "检查") }
+                    ) { Text(stringResource(if (checking) R.string.checking else R.string.check)) }
                 }
             }
         ))
         if (checking) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
 
         SegmentedColumn(content = listOf(
-            { ArrowItem(Icons.Filled.Palette, "主题", "颜色、深色模式和动态取色") { open(SettingsPage.THEME) } },
+            { ArrowItem(Icons.Filled.Palette, stringResource(R.string.theme), stringResource(R.string.theme_summary)) { open(SettingsPage.THEME) } },
             {
                 val languageIndex = languages.indexOfFirst { it.second == currentLanguageTag(context) }.coerceAtLeast(0)
                 SegmentedDropdownItem(
                     icon = Icons.Filled.Language,
-                    title = "语言",
-                    summary = "应用显示语言",
+                    title = stringResource(R.string.language),
+                    summary = stringResource(R.string.language),
                     items = languages.map { it.first },
                     selectedIndex = languageIndex,
                     onItemSelected = { index -> setAppLanguage(context, languages[index].second) }
@@ -173,7 +187,7 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
         ))
 
         SegmentedColumn(content = listOf(
-            { ArrowItem(Icons.Filled.CloudDownload, "下载设置", "下载通道、并发数和图标类型") { open(SettingsPage.DOWNLOAD) } }
+            { ArrowItem(Icons.Filled.CloudDownload, stringResource(R.string.download_settings), stringResource(R.string.download_settings_summary)) { open(SettingsPage.DOWNLOAD) } }
         ))
     }
 }
@@ -188,7 +202,7 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
         ThemeMode.DARK -> true
     }
 
-    SettingsPageScaffold("主题", modifier, padding, onBack) {
+    SettingsPageScaffold(stringResource(R.string.theme), modifier, padding, onBack) {
         ThemePreview(
             modifier = Modifier.fillMaxWidth(),
             isDark = isDark,
@@ -213,9 +227,9 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
             horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
         ) {
             listOf(
-                Triple(Icons.Filled.Brightness4, "系统", ThemeMode.SYSTEM),
-                Triple(Icons.Filled.Brightness7, "浅色", ThemeMode.LIGHT),
-                Triple(Icons.Filled.Brightness3, "深色", ThemeMode.DARK)
+                Triple(Icons.Filled.Brightness4, stringResource(R.string.theme_system), ThemeMode.SYSTEM),
+                Triple(Icons.Filled.Brightness7, stringResource(R.string.theme_light), ThemeMode.LIGHT),
+                Triple(Icons.Filled.Brightness3, stringResource(R.string.theme_dark), ThemeMode.DARK)
             ).forEachIndexed { index, (icon, label, mode) ->
                 ExpressiveToggleButton(
                     checked = settings.theme == mode,
@@ -230,8 +244,6 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
                     }
                 ) {
                     Icon(icon, contentDescription = label)
-                    Spacer(Modifier.width(6.dp))
-                    Text(label)
                 }
             }
         }
@@ -243,7 +255,7 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
                     val styles = PaletteStyle.entries
                     SegmentedDropdownItem(
                         icon = Icons.Filled.Style,
-                        title = "调色板样式",
+                        title = stringResource(R.string.palette_style),
                         items = styles.map { it.name },
                         selectedIndex = styles.indexOf(settings.paletteStyle),
                         onItemSelected = { index ->
@@ -255,7 +267,7 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
                     val specs = ColorSpec.SpecVersion.entries
                     SegmentedDropdownItem(
                         icon = Icons.Filled.DesignServices,
-                        title = "色彩规范",
+                        title = stringResource(R.string.color_spec),
                         items = specs.map { it.name },
                         selectedIndex = specs.indexOf(settings.colorSpec).coerceAtLeast(0),
                         onItemSelected = { index ->
@@ -270,8 +282,8 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
             SegmentedColumn(content = listOf({
                 SwitchItem(
                     icon = Icons.Filled.MenuOpen,
-                    title = "预测性返回手势",
-                    summary = "启用系统返回手势的预览动画",
+                    title = stringResource(R.string.predictive_back),
+                    summary = stringResource(R.string.predictive_back_summary),
                     checked = settings.predictiveBack
                 ) {
                     val enabled = !settings.predictiveBack
@@ -372,7 +384,7 @@ private fun ThemePreview(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    "ColorOS Icons",
+                    stringResource(R.string.theme_preview_title),
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurface
                 )
@@ -407,12 +419,12 @@ private fun ThemePreview(
 private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack: () -> Unit) {
     val context = LocalContext.current
     val settings by AppSettingsState.settings.collectAsState()
-    SettingsPageScaffold("下载设置", modifier, padding, onBack) {
-        Text("下载通道", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+    SettingsPageScaffold(stringResource(R.string.download_settings), modifier, padding, onBack) {
+        Text(stringResource(R.string.download_channel_section), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
         SegmentedColumn(content = listOf({
             SegmentedDropdownItem(
-                title = "下载通道",
-                summary = "选择图标索引的下载来源",
+                title = stringResource(R.string.download_channel_title),
+                summary = stringResource(R.string.download_channel_summary),
                 items = listOf("GitHub", "Cloudflare"),
                 selectedIndex = if (settings.channel == CHANNEL_CLOUDFLARE) 1 else 0,
                 onItemSelected = { index ->
@@ -422,7 +434,7 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
                 }
             )
         }))
-        Text("下载性能", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        Text(stringResource(R.string.download_performance_section), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
         SegmentedColumn(content = listOf({
             val sliderState = rememberSliderState(
                 value = settings.concurrency.toFloat(),
@@ -439,9 +451,9 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("并发数")
+                                Text(stringResource(R.string.concurrency_title))
                                 Text(
-                                    "同时下载的资源数量",
+                                    stringResource(R.string.concurrency_summary_short),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -464,13 +476,13 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
                 verticalAlignment = Alignment.CenterVertically
             )
         }))
-        Text("图标种类", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        Text(stringResource(R.string.icon_types_section), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
         SegmentedColumn(
             content = DOWNLOAD_VARIANTS.map { variant ->
                 {
                     SwitchItem(
                         title = variant.uppercase(),
-                        summary = "下载 ${variant.uppercase()} 图标资源",
+                        summary = stringResource(R.string.download_variant_summary, variant.uppercase()),
                         checked = variant in settings.variants,
                         onClick = {
                             AppSettingsState.update(context) { current ->
@@ -495,7 +507,7 @@ private fun SettingsPageScaffold(title: String, modifier: Modifier, padding: Pad
         modifier = modifier,
         title = title,
         contentPadding = padding,
-        navigationIcon = onBack?.let { callback -> { IconButton(onClick = callback) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } } } ?: {}
+        navigationIcon = onBack?.let { callback -> { IconButton(onClick = callback) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } } } ?: {}
     ) { contentModifier ->
         Column(
             contentModifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -607,12 +619,12 @@ private fun SwitchItem(icon: ImageVector? = null, title: String, summary: String
 private fun currentLanguageTag(context: android.content.Context): String =
     context.resources.configuration.locales[0]?.toLanguageTag().orEmpty()
 
-private fun checkForUpdate(): String = runCatching {
+private fun checkForUpdate(context: android.content.Context): String = runCatching {
     val connection = URL("https://api.github.com/repos/immortal521/ColorIconsPatch/releases/latest")
         .openConnection() as HttpURLConnection
     connection.connectTimeout = 8_000
     connection.readTimeout = 8_000
     try {
-        if (connection.responseCode == 404) "暂无发布版本" else "发现可用发布版本，请前往项目页面查看"
+        if (connection.responseCode == 404) context.getString(R.string.no_release) else context.getString(R.string.release_available)
     } finally { connection.disconnect() }
-}.getOrElse { "检查失败：${it.message ?: "网络不可用"}" }
+}.getOrElse { context.getString(R.string.update_check_failed, it.message ?: context.getString(R.string.network_unavailable)) }

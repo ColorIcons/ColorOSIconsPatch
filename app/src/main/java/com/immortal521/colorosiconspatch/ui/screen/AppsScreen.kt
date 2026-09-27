@@ -37,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.InstalledApp
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
@@ -49,8 +51,8 @@ fun AppsScreen(
     onAppClick: (InstalledApp) -> Unit = {}
 ) {
     var searchText by rememberSaveable { mutableStateOf("") }
-    var sortByPackage by rememberSaveable { mutableStateOf(false) }
-    var showSystemApps by rememberSaveable { mutableStateOf(true) }
+    var sortBy by rememberSaveable { mutableStateOf(AppSort.NAME) }
+    var showSystemApps by rememberSaveable { mutableStateOf(false) }
     var showOtherUserApps by rememberSaveable { mutableStateOf(false) }
     var sortMenuVisible by rememberSaveable { mutableStateOf(false) }
     var filterMenuVisible by rememberSaveable { mutableStateOf(false) }
@@ -63,42 +65,56 @@ fun AppsScreen(
             searchText.isBlank() || it.label.contains(searchText, ignoreCase = true) ||
                 it.packageName.contains(searchText, ignoreCase = true)
         }
-        ?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-            if (sortByPackage) it.packageName else it.label
-        })
+        ?.sortedWith(
+            when (sortBy) {
+                AppSort.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.label }
+                AppSort.PACKAGE -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.packageName }
+                AppSort.RECENT -> compareByDescending<InstalledApp> { it.installTime }
+            }
+        )
         ?.toList()
 
     MainScreenScaffold(
-        title = "应用",
+        title = stringResource(R.string.apps),
         contentPadding = contentPadding,
         modifier = modifier,
         scrollable = false,
         actions = {
             Box {
                 IconButton(onClick = { sortMenuVisible = true }) {
-                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "排序方式")
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
                 }
                 DropdownMenu(
                     expanded = sortMenuVisible,
                     onDismissRequest = { sortMenuVisible = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("按名称排序") },
-                        leadingIcon = if (!sortByPackage) {
+                        text = { Text(stringResource(R.string.sort_name)) },
+                        leadingIcon = if (sortBy == AppSort.NAME) {
                             { Icon(Icons.Default.Check, contentDescription = null) }
                         } else null,
                         onClick = {
-                            sortByPackage = false
+                            sortBy = AppSort.NAME
                             sortMenuVisible = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("按包名排序") },
-                        leadingIcon = if (sortByPackage) {
+                        text = { Text(stringResource(R.string.sort_package)) },
+                        leadingIcon = if (sortBy == AppSort.PACKAGE) {
                             { Icon(Icons.Default.Check, contentDescription = null) }
                         } else null,
                         onClick = {
-                            sortByPackage = true
+                            sortBy = AppSort.PACKAGE
+                            sortMenuVisible = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sort_recent)) },
+                        leadingIcon = if (sortBy == AppSort.RECENT) {
+                            { Icon(Icons.Default.Check, contentDescription = null) }
+                        } else null,
+                        onClick = {
+                            sortBy = AppSort.RECENT
                             sortMenuVisible = false
                         }
                     )
@@ -106,21 +122,21 @@ fun AppsScreen(
             }
             Box {
                 IconButton(onClick = { filterMenuVisible = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "应用筛选")
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.filter_apps))
                 }
                 DropdownMenu(
                     expanded = filterMenuVisible,
                     onDismissRequest = { filterMenuVisible = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("显示系统软件") },
+                        text = { Text(stringResource(R.string.show_system_apps)) },
                         leadingIcon = if (showSystemApps) {
                             { Icon(Icons.Default.Check, contentDescription = null) }
                         } else null,
                         onClick = { showSystemApps = !showSystemApps }
                     )
                     DropdownMenuItem(
-                        text = { Text("显示其他用户空间软件") },
+                        text = { Text(stringResource(R.string.show_other_users)) },
                         leadingIcon = if (showOtherUserApps) {
                             { Icon(Icons.Default.Check, contentDescription = null) }
                         } else null,
@@ -138,13 +154,13 @@ fun AppsScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 singleLine = true,
-                placeholder = { Text("搜索应用或包名") },
+                placeholder = { Text(stringResource(R.string.search_apps)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 keyboardOptions = KeyboardOptions.Default,
                 trailingIcon = {
                     if (searchText.isNotEmpty()) {
                         IconButton(onClick = { searchText = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "清除搜索")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
                         }
                     }
                 }
@@ -182,6 +198,8 @@ fun AppsScreen(
     }
 }
 
+private enum class AppSort { NAME, PACKAGE, RECENT }
+
 @Composable
 private fun AppRow(app: InstalledApp, index: Int, count: Int, onClick: () -> Unit) {
     SegmentedListItem(
@@ -209,7 +227,7 @@ private fun AppRow(app: InstalledApp, index: Int, count: Int, onClick: () -> Uni
         },
         trailingContent = {
             Text(
-                text = if (app.isAdapted) "已适配" else "未适配",
+                text = stringResource(if (app.isAdapted) R.string.adapted else R.string.not_adapted),
                 style = MaterialTheme.typography.labelMedium,
                 color = if (app.isAdapted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )

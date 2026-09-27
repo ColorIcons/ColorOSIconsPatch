@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.IconFile
 import com.immortal521.colorosiconspatch.data.IconPackage
@@ -86,7 +88,7 @@ fun AppDetailScreen(
         contentPadding = contentPadding,
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
             }
         }
     ) { contentModifier ->
@@ -98,7 +100,7 @@ fun AppDetailScreen(
                 SegmentedListItem(
                     shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
                     colors = detailItemColors(),
-                    content = { Text("应用包名") },
+                    content = { Text(stringResource(R.string.package_name)) },
                     supportingContent = { Text(packageName) },
                     verticalAlignment = Alignment.CenterVertically
                 )
@@ -106,7 +108,7 @@ fun AppDetailScreen(
                 SegmentedListItem(
                     shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(1, 2),
                     colors = detailItemColors(),
-                    content = { Text("应用大小") },
+                    content = { Text(stringResource(R.string.app_size)) },
                     supportingContent = { Text(formatBytes(appSize)) },
                     verticalAlignment = Alignment.CenterVertically
                 )
@@ -139,7 +141,7 @@ fun AppDetailScreen(
                 }
             }
             if (appPackage == null) {
-                Text("暂无已下载的图标资源", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.no_icons), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -240,7 +242,7 @@ private fun IconSlot(
         if (entry == null) {
             Icon(
                 Icons.Outlined.Image,
-                contentDescription = "未适配",
+                contentDescription = stringResource(R.string.unadapted_icon),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
@@ -296,12 +298,13 @@ private fun iconAspectRatio(size: String): Float = when (size) {
     else -> 1f
 }
 
+@Composable
 private fun categoryTitle(category: String): String = when (category) {
-    "light" -> "浅色图标"
-    "dark" -> "深色图标"
-    "monet" -> "莫奈图标"
-    "mat" -> "Material 图标"
-    else -> "杂项图标"
+    "light" -> stringResource(R.string.light_icons)
+    "dark" -> stringResource(R.string.dark_icons)
+    "monet" -> stringResource(R.string.monet_icons)
+    "mat" -> stringResource(R.string.material_icons)
+    else -> stringResource(R.string.other_icons)
 }
 
 private fun formatBytes(bytes: Long): String = when {

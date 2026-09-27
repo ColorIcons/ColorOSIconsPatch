@@ -12,6 +12,8 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.immortal521.colorosiconspatch.R
 
 private data class NavigationDestination(
     val label: String,
@@ -25,9 +27,9 @@ fun MainNavigationBar(
     onTabSelected: (Int) -> Unit
 ) {
     val destinations = listOf(
-        NavigationDestination("首页", Icons.Filled.Home, Icons.Outlined.Home),
-        NavigationDestination("应用", Icons.Filled.Apps, Icons.Outlined.Apps),
-        NavigationDestination("设置", Icons.Filled.Settings, Icons.Outlined.Settings)
+        NavigationDestination(stringResource(R.string.nav_home), Icons.Filled.Home, Icons.Outlined.Home),
+        NavigationDestination(stringResource(R.string.nav_apps), Icons.Filled.Apps, Icons.Outlined.Apps),
+        NavigationDestination(stringResource(R.string.nav_settings), Icons.Filled.Settings, Icons.Outlined.Settings)
     )
 
     NavigationBar {

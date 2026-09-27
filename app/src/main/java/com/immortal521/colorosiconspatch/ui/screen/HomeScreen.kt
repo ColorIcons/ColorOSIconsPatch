@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
 import com.immortal521.colorosiconspatch.data.IconSyncProgress
@@ -68,18 +70,18 @@ fun HomeScreen(
     } else {
         CheckStatus.FAILED
     }
-    val androidVersion = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
-    val securityPatch = Build.VERSION.SECURITY_PATCH.ifBlank { "未知" }
+    val androidVersion = stringResource(R.string.android_version, Build.VERSION.RELEASE, Build.VERSION.SDK_INT)
+    val securityPatch = Build.VERSION.SECURITY_PATCH.ifBlank { stringResource(R.string.unknown_value) }
     val deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
-    val kernelVersion = System.getProperty("os.version") ?: "未知"
+    val kernelVersion = System.getProperty("os.version") ?: stringResource(R.string.unknown_value)
 
     MainScreenScaffold(
-        title = "ColorOS Icons Patch",
+        title = stringResource(R.string.app_name),
         contentPadding = contentPadding,
         modifier = modifier,
         actions = {
             IconButton(onClick = { showRefreshConfirmation = true }) {
-                Icon(Icons.Rounded.Refresh, contentDescription = "刷新桌面图标")
+                Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.refresh_launcher))
             }
         }
     ) { contentModifier ->
@@ -116,8 +118,8 @@ fun HomeScreen(
     if (showRefreshConfirmation) {
         AlertDialog(
             onDismissRequest = { showRefreshConfirmation = false },
-            title = { Text("刷新桌面图标") },
-            text = { Text("确定要刷新桌面图标吗？") },
+            title = { Text(stringResource(R.string.refresh_icons_title)) },
+            text = { Text(stringResource(R.string.refresh_launcher_confirm)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -125,12 +127,12 @@ fun HomeScreen(
                         onRefreshLauncher()
                     }
                 ) {
-                    Text("刷新")
+                    Text(stringResource(R.string.refresh))
                 }
             },
             dismissButton = {
                 Button(onClick = { showRefreshConfirmation = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -165,16 +167,16 @@ private fun RootStatusCard(
         else -> Icons.Rounded.Block
     }
     val title = when {
-        ready -> "环境正常"
-        checking -> "正在检查环境"
-        else -> "环境未就绪"
+        ready -> stringResource(R.string.environment_ready)
+        checking -> stringResource(R.string.environment_checking)
+        else -> stringResource(R.string.environment_not_ready)
     }
     val summary = when {
-        ready -> "${implementation.displayName} · 图标模块和 LSPosed 均已激活"
-        checking -> "${implementation.displayName} · 正在确认 LSPosed 是否已激活"
-        root != CheckStatus.PASSED -> "${implementation.displayName} · Root 权限不可用"
-        module != CheckStatus.PASSED -> "${implementation.displayName} · 图标模块未安装"
-        else -> "${implementation.displayName} · LSPosed 未激活本模块"
+        ready -> stringResource(R.string.environment_ready_summary, implementation.displayName)
+        checking -> stringResource(R.string.environment_checking_summary, implementation.displayName)
+        root != CheckStatus.PASSED -> stringResource(R.string.root_unavailable_summary, implementation.displayName)
+        module != CheckStatus.PASSED -> stringResource(R.string.module_missing_summary, implementation.displayName)
+        else -> stringResource(R.string.xposed_inactive_summary, implementation.displayName)
     }
 
     Surface(
@@ -191,7 +193,7 @@ private fun RootStatusCard(
             },
             trailingContent = {
                 StatusPill(
-                    text = if (ready) "已就绪" else "需处理",
+                    text = stringResource(if (ready) R.string.status_ready else R.string.status_needs_action),
                     color = if (ready) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
             },
@@ -231,8 +233,8 @@ private fun IconSyncCard(
         ) {
             when {
                 syncing && progress != null -> {
-                    Text("正在更新图标资源", style = MaterialTheme.typography.titleMediumEmphasized)
-                    Text(progress.currentApp ?: "准备中", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.updating_icons), style = MaterialTheme.typography.titleMediumEmphasized)
+                    Text(progress.currentApp ?: stringResource(R.string.preparing), style = MaterialTheme.typography.bodyMedium)
                     progress.currentFile?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall)
                     }
@@ -245,19 +247,19 @@ private fun IconSyncCard(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        "应用 ${progress.completedApps} / ${progress.totalApps}",
+                        stringResource(R.string.app_progress, progress.completedApps, progress.totalApps),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                plan == null -> Text("正在检查图标资源差异…")
+                plan == null -> Text(stringResource(R.string.checking_icon_changes))
                 else -> {
-                    Text("发现 ${plan.affectedApps} 个应用有资源差异", style = MaterialTheme.typography.titleMediumEmphasized)
+                    Text(stringResource(R.string.icon_changes_found, plan.affectedApps), style = MaterialTheme.typography.titleMediumEmphasized)
                     Text(
-                        "${plan.updates.size} 个文件需要下载，${plan.staleFiles.size} 个文件需要删除 · ${formatBytes(plan.totalBytes)}",
+                        stringResource(R.string.files_to_update, plan.updates.size, plan.staleFiles.size, formatBytes(plan.totalBytes)),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Button(onClick = onSync, enabled = !syncing) {
-                        Text("下载并更新")
+                        Text(stringResource(R.string.download_update))
                     }
                 }
             }
@@ -286,10 +288,10 @@ private fun SystemInfoCard(
             modifier = Modifier.padding(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            InfoCardItem(Icons.Filled.Tag, "Android", androidVersion)
-            InfoCardItem(Icons.Filled.Security, "安全补丁", securityPatch)
-            InfoCardItem(Icons.Filled.Smartphone, "设备型号", deviceModel)
-            InfoCardItem(Icons.Filled.DeveloperBoard, "Kernel", kernelVersion)
+            InfoCardItem(Icons.Filled.Tag, stringResource(R.string.android_label), androidVersion)
+            InfoCardItem(Icons.Filled.Security, stringResource(R.string.security_patch), securityPatch)
+            InfoCardItem(Icons.Filled.Smartphone, stringResource(R.string.device_model), deviceModel)
+            InfoCardItem(Icons.Filled.DeveloperBoard, stringResource(R.string.kernel_label), kernelVersion)
         }
     }
 }
@@ -345,8 +347,9 @@ private fun StatusPill(text: String, color: Color) {
     }
 }
 
+@Composable
 private fun formatBytes(bytes: Long): String = when {
-    bytes < 1024 -> "$bytes B"
-    bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024f)
-    else -> "%.1f MB".format(bytes / (1024f * 1024f))
+    bytes < 1024 -> stringResource(R.string.bytes, bytes)
+    bytes < 1024 * 1024 -> stringResource(R.string.kilobytes, bytes / 1024f)
+    else -> stringResource(R.string.megabytes, bytes / (1024f * 1024f))
 }

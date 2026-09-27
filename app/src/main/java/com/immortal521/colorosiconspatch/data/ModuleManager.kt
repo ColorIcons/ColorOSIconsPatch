@@ -37,31 +37,31 @@ suspend fun prepareAndInstallModule(context: Context): ModuleOperationResult =
             when (val installer = detectInstaller()) {
                 RootImplementation.APATCH -> ModuleOperationResult(
                     ModuleOperationStatus.MANUAL_INSTALL_REQUIRED,
-                    "请在 APatch Manager 中导入模块 ZIP：$PUBLIC_ZIP",
+                    context.getString(com.immortal521.colorosiconspatch.R.string.apatch_import_module, PUBLIC_ZIP),
                     copyZipToPublicStorage(zip)
                 )
                 RootImplementation.MAGISK,
                 RootImplementation.KERNELSU -> {
-                    val install = installModule(zip, installer)
+                    val install = installModule(context, zip, installer)
                     if (install.first == 0 && moduleExists(MODULE_ID)) {
-                        ensurePersistentIconDirectory()
+                        ensurePersistentIconDirectory(context)
                         zip.delete()
-                        ModuleOperationResult(ModuleOperationStatus.SUCCESS, "模块已准备并安装", null)
+                        ModuleOperationResult(ModuleOperationStatus.SUCCESS, context.getString(com.immortal521.colorosiconspatch.R.string.module_installed), null)
                     } else {
                         ModuleOperationResult(
                             ModuleOperationStatus.FAILED,
-                            install.second.ifBlank { "模块安装失败" },
+                            install.second.ifBlank { context.getString(com.immortal521.colorosiconspatch.R.string.module_install_failed) },
                             zip
                         )
                     }
                 }
                 RootImplementation.UNKNOWN -> ModuleOperationResult(
                     ModuleOperationStatus.FAILED,
-                    "未检测到 Magisk、KernelSU 或 APatch"
+                    context.getString(com.immortal521.colorosiconspatch.R.string.root_manager_missing)
                 )
             }
         } catch (error: Exception) {
-            ModuleOperationResult(ModuleOperationStatus.FAILED, error.message ?: "模块准备失败")
+            ModuleOperationResult(ModuleOperationStatus.FAILED, error.message ?: context.getString(com.immortal521.colorosiconspatch.R.string.module_prepare_failed))
         }
     }
 
@@ -76,7 +76,7 @@ private fun createModuleZip(context: Context, output: File) {
             addAsset(zip, context, "service.sh")
             addAsset(zip, context, "uninstall.sh")
         }
-        if (!temporary.renameTo(output)) throw IOException("无法保存模块 ZIP")
+        if (!temporary.renameTo(output)) throw IOException(context.getString(com.immortal521.colorosiconspatch.R.string.save_module_failed))
     } finally {
         if (temporary.exists()) temporary.delete()
     }
@@ -107,11 +107,11 @@ private fun addText(zip: ZipOutputStream, name: String, content: String) {
 
 private fun detectInstaller(): RootImplementation = detectRootImplementation()
 
-private fun installModule(zip: File, implementation: RootImplementation): Pair<Int, String> {
+private fun installModule(context: Context, zip: File, implementation: RootImplementation): Pair<Int, String> {
     val command = when (implementation) {
         RootImplementation.MAGISK -> "magisk --install-module ${shellQuote(zip.absolutePath)}"
         RootImplementation.KERNELSU -> "ksud module install ${shellQuote(zip.absolutePath)}"
-        else -> error("该 Root 实现不支持自动安装")
+        else -> error(context.getString(com.immortal521.colorosiconspatch.R.string.unsupported_root_install))
     }
     val result = Shell.cmd(command).exec()
     return result.code to (result.out + result.err).joinToString("\n")
@@ -124,11 +124,11 @@ private fun copyZipToPublicStorage(zip: File): File? {
     return if (result.isSuccess) File(PUBLIC_ZIP) else zip
 }
 
-private fun ensurePersistentIconDirectory() {
+private fun ensurePersistentIconDirectory(context: Context) {
     val result = Shell.cmd(
         "mkdir -p ${shellQuote(PERSISTENT_ICONS)} && chmod 0755 ${shellQuote(PERSISTENT_ICONS)}"
     ).exec()
-    check(result.isSuccess) { result.err.joinToString("\n").ifBlank { "无法创建持久化图标目录" } }
+    check(result.isSuccess) { result.err.joinToString("\n").ifBlank { context.getString(com.immortal521.colorosiconspatch.R.string.persistent_icon_dir_failed) } }
 }
 
 private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"

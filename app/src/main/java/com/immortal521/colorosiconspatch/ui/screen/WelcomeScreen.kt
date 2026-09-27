@@ -38,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.ModuleOperationStatus
 import com.immortal521.colorosiconspatch.data.RootImplementation
@@ -153,45 +155,45 @@ private fun StepContent(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         when (step) {
             WelcomeStep.INTRO -> {
-                Text("让图标更协调", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.welcome_title), style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "ColorOS Icons Patch 会检查运行环境，并管理 ColorOS 图标适配模块。",
+                    stringResource(R.string.welcome_intro),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
                 Button(onClick = onStart, modifier = Modifier.padding(top = 24.dp)) {
-                    Text("开始设置")
+                    Text(stringResource(R.string.start_setup))
                 }
             }
             WelcomeStep.ROOT -> {
-                Text("授予 Root 权限", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.grant_root), style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "需要 Root 权限来管理图标模块。",
+                    stringResource(R.string.root_required),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
-                StatusText(rootStatus, "${rootImplementation.displayName} Root 权限")
+                StatusText(rootStatus, stringResource(R.string.root_permission, rootImplementation.displayName))
                 ActionForStatus(
                     status = rootStatus,
-                    actionLabel = "请求 Root 权限",
+                    actionLabel = stringResource(R.string.request_root),
                     onClick = onRequestRoot
                 )
             }
             WelcomeStep.MODULE -> {
-                Text("检查图标模块", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.check_icon_module), style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "检查模块状态，并在需要时准备模块。",
+                    stringResource(R.string.check_module_summary),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
-                StatusText(moduleStatus, "ColorOSIconsPatch 模块")
+                StatusText(moduleStatus, stringResource(R.string.module_label))
                 if (moduleStatus != CheckStatus.PASSED) {
                     Button(
                         onClick = onInstallModule,
                         modifier = Modifier.padding(top = 12.dp),
                         enabled = moduleStatus != CheckStatus.CHECKING
                     ) {
-                        Text("准备并安装模块")
+                        Text(stringResource(R.string.prepare_install_module))
                     }
                 }
                 moduleInstallMessage?.let { message ->
@@ -208,28 +210,28 @@ private fun StepContent(
                 }
             }
             WelcomeStep.XPOSED -> {
-                Text("检查 LSPosed 激活状态", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.check_xposed), style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "请在 LSPosed 中启用本应用，并勾选 ColorOS Launcher 作用域。",
+                    stringResource(R.string.xposed_instruction),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
-                StatusText(xposedStatus, "LSPosed 模块激活")
+                StatusText(xposedStatus, stringResource(R.string.xposed_module_active))
                 ActionForStatus(
                     status = xposedStatus,
-                    actionLabel = "重新检查 LSPosed",
+                    actionLabel = stringResource(R.string.recheck_xposed),
                     onClick = onCheckXposed
                 )
             }
             WelcomeStep.COMPLETE -> {
-                Text("准备完成", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.setup_complete), style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Root 和图标模块均已准备好。",
+                    stringResource(R.string.setup_complete_summary),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
                 Button(onClick = onContinue, modifier = Modifier.padding(top = 24.dp)) {
-                    Text("进入主界面")
+                    Text(stringResource(R.string.enter_main))
                 }
             }
         }
@@ -239,13 +241,13 @@ private fun StepContent(
 @Composable
 private fun StatusText(status: CheckStatus, label: String) {
     val text = when (status) {
-        CheckStatus.UNKNOWN -> "尚未检查"
-        CheckStatus.CHECKING -> "检查中..."
-        CheckStatus.PASSED -> "已通过"
-        CheckStatus.FAILED -> "未通过"
+        CheckStatus.UNKNOWN -> stringResource(R.string.not_checked)
+        CheckStatus.CHECKING -> stringResource(R.string.checking)
+        CheckStatus.PASSED -> stringResource(R.string.passed)
+        CheckStatus.FAILED -> stringResource(R.string.failed)
     }
     Text(
-        text = "$label：$text",
+        text = stringResource(R.string.status_format, label, text),
         style = MaterialTheme.typography.titleMedium,
         color = if (status == CheckStatus.FAILED) MaterialTheme.colorScheme.error
         else MaterialTheme.colorScheme.onSurface,

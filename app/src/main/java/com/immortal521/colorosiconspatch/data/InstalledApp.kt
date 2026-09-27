@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 data class InstalledApp(
     val label: String,
     val packageName: String,
+    val installTime: Long,
     val size: Long,
     val icon: androidx.compose.ui.graphics.ImageBitmap,
     val isAdapted: Boolean = false,
@@ -35,6 +36,7 @@ fun loadInstalledApps(
             InstalledApp(
                 label = applicationInfo.loadLabel(packageManager).toString(),
                 packageName = applicationInfo.packageName,
+                installTime = packageManager.getPackageInfo(applicationInfo.packageName, 0).firstInstallTime,
                 size = File(applicationInfo.sourceDir).length(),
                 icon = applicationInfo.loadIcon(packageManager).toBitmap().asImageBitmap(),
                 isAdapted = applicationInfo.packageName in adaptedPackages,

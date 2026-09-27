@@ -24,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.IconIndexLoadResult
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
@@ -228,7 +230,7 @@ private fun MainPagerScreen(
                                     buildIconSyncPlan(apps.mapTo(mutableSetOf()) { it.packageName }, index)
                                 }
                             } catch (error: Exception) {
-                                syncError = error.message ?: "资源更新失败"
+                                syncError = error.message ?: context.getString(R.string.module_update_failed)
                             } finally {
                                 syncing = false
                             }

@@ -82,18 +82,18 @@ fun loadIconIndex(
         }
     } catch (_: Exception) {
         if (!cache.isFile) {
-            IconIndexLoadResult(emptyMap(), error = "图标索引读取失败")
+            IconIndexLoadResult(emptyMap(), error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed))
         } else {
             try {
                 parseIndex(cache.readText(), enabledVariants).let { (requiredFiles, packages) ->
                     IconIndexLoadResult(
                         packages = packages,
                         requiredFiles = requiredFiles,
-                        error = "在线索引读取失败，当前使用缓存"
+                        error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_cache_fallback)
                     )
                 }
             } catch (_: Exception) {
-                IconIndexLoadResult(emptyMap(), error = "图标索引读取失败")
+                IconIndexLoadResult(emptyMap(), error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed))
             }
         }
     }
@@ -252,9 +252,9 @@ suspend fun syncIconResources(
                         loadAppSettings(context).indexUrl.removeSuffix("/index.json")
                     )
                     check(sha256(temporary) == update.file.sha256) {
-                        "图标校验失败：${update.file.path}"
+                        context.getString(com.immortal521.colorosiconspatch.R.string.icon_checksum_failed, update.file.path)
                     }
-                    installRootFile(temporary, update.target)
+                    installRootFile(context, temporary, update.target)
                     downloadedForApp++
                 } finally {
                     temporary.delete()
@@ -262,7 +262,7 @@ suspend fun syncIconResources(
             }
             for (staleFile in staleFiles) {
                 check(runRoot("rm -f ${shellQuote(staleFile)}").first == 0) {
-                    "无法删除旧图标资源"
+                    context.getString(com.immortal521.colorosiconspatch.R.string.delete_old_icons_failed)
                 }
                 removedForApp++
             }
@@ -290,11 +290,11 @@ private fun readLocalChecksums(): Map<String, String> {
     }.toMap()
 }
 
-private fun installRootFile(source: File, target: String) {
+private fun installRootFile(context: Context, source: File, target: String) {
     val command = "mkdir -p ${shellQuote(target.substringBeforeLast('/'))} && " +
         "cp ${shellQuote(source.absolutePath)} ${shellQuote(target)} && " +
         "chmod 0644 ${shellQuote(target)}"
-    check(runRoot(command).first == 0) { "无法写入图标资源" }
+    check(runRoot(command).first == 0) { context.getString(com.immortal521.colorosiconspatch.R.string.write_icons_failed) }
 }
 
 private fun removeStaleRootFiles(keep: Set<String>, installedPackages: Set<String>) {
@@ -340,7 +340,7 @@ private fun runRoot(command: String): Pair<Int, String> {
         val result = com.topjohnwu.superuser.Shell.cmd(command).exec()
         result.code to (result.out + result.err).joinToString("\n")
     } catch (error: Exception) {
-        1 to (error.message ?: "无法执行 Root 命令")
+        1 to (error.message ?: "")
     }
 }
 
