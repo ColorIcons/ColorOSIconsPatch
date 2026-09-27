@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Smartphone
@@ -305,7 +306,7 @@ private fun SystemInfoCard(
             modifier = Modifier.padding(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            InfoCardItem(Icons.Filled.Tag, stringResource(R.string.android_label), androidVersion)
+            InfoCardItem(Icons.Filled.Android, stringResource(R.string.android_label), androidVersion)
             InfoCardItem(Icons.Filled.Security, stringResource(R.string.security_patch), securityPatch)
             InfoCardItem(Icons.Filled.Smartphone, stringResource(R.string.device_model), deviceModel)
             InfoCardItem(Icons.Filled.DeveloperBoard, stringResource(R.string.kernel_label), kernelVersion)
