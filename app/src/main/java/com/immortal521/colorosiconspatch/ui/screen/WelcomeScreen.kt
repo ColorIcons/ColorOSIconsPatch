@@ -42,7 +42,6 @@ import androidx.compose.ui.res.stringResource
 import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.ModuleOperationStatus
-import com.immortal521.colorosiconspatch.data.RootImplementation
 
 private enum class WelcomeStep {
     INTRO,
@@ -59,7 +58,6 @@ fun WelcomeScreen(
     rootStatus: CheckStatus,
     moduleStatus: CheckStatus,
     xposedStatus: CheckStatus,
-    rootImplementation: RootImplementation,
     onRequestRoot: () -> Unit,
     onInstallModule: () -> Unit,
     moduleInstallStatus: ModuleOperationStatus?,
@@ -129,7 +127,6 @@ fun WelcomeScreen(
                 rootStatus = rootStatus,
                 moduleStatus = moduleStatus,
                 xposedStatus = xposedStatus,
-                rootImplementation = rootImplementation,
                 onRequestRoot = onRequestRoot,
                 onInstallModule = onInstallModule,
                 moduleInstallStatus = moduleInstallStatus,
@@ -152,7 +149,6 @@ private fun StepContent(
     rootStatus: CheckStatus,
     moduleStatus: CheckStatus,
     xposedStatus: CheckStatus,
-    rootImplementation: RootImplementation,
     onRequestRoot: () -> Unit,
     onInstallModule: () -> Unit,
     moduleInstallStatus: ModuleOperationStatus?,
