@@ -41,7 +41,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DesignServices
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.MenuOpen
+import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -316,7 +316,7 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             SegmentedColumn(content = listOf({
                 SwitchItem(
-                    icon = Icons.Filled.MenuOpen,
+                    icon = Icons.AutoMirrored.Filled.MenuOpen,
                     title = stringResource(R.string.predictive_back),
                     summary = stringResource(R.string.predictive_back_summary),
                     checked = settings.predictiveBack
