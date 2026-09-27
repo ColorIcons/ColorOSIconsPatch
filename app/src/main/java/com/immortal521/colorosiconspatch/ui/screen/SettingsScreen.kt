@@ -66,6 +66,7 @@ import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -154,12 +155,17 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
     }
 
     fun checkUpdates() {
+        if (checking || downloading) return
         checking = true
         result = null
         scope.launch {
             result = withContext(Dispatchers.IO) { checkForUpdate(context) }
             checking = false
         }
+    }
+
+    LaunchedEffect(settings.autoCheckUpdates) {
+        if (settings.autoCheckUpdates) checkUpdates()
     }
 
     val languages = listOf(
