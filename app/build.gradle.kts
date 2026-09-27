@@ -25,7 +25,7 @@ android {
 
     defaultConfig {
         applicationId = "com.immortal521.colorosiconspatch"
-        minSdk = 36
+        minSdk = 33
         targetSdk = 37
         versionCode = appVersionCode
         versionName = appVersion
