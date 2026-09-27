@@ -4,7 +4,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,11 +23,11 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,22 +36,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.IconFile
 import com.immortal521.colorosiconspatch.data.IconPackage
 import com.immortal521.colorosiconspatch.data.loadCachedIconBitmap
 import com.immortal521.colorosiconspatch.data.loadCachedIconPackage
-import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
 import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
+import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
-
-private const val ICON_ROOT = "/data/adb/ColorOSIconsPatch/uxicons"
 
 @Composable
 fun AppDetailScreen(
@@ -249,9 +246,9 @@ private fun IconSlot(
                 modifier = Modifier.size(24.dp)
             )
         } else {
-            val contentScale = when {
-                targetSize == "1x2" -> ContentScale.FillWidth
-                targetSize == "2x1" -> ContentScale.FillHeight
+            val contentScale = when (targetSize) {
+                "1x2" -> ContentScale.FillWidth
+                "2x1" -> ContentScale.FillHeight
                 else -> ContentScale.Fit
             }
             if (category == "dark") {
@@ -304,12 +301,6 @@ private fun categoryOf(name: String): String = when {
 private fun iconSize(name: String): String = Regex("_(1x2|2x1|2x2)").find(name)?.groupValues?.get(1) ?: "1x1"
 
 private fun sizeOrder(size: String): Int = listOf("1x1", "1x2", "2x1", "2x2").indexOf(size).let { if (it < 0) 99 else it }
-
-private fun iconAspectRatio(size: String): Float = when (size) {
-    "1x2" -> 240f / 820f
-    "2x1" -> 820f / 240f
-    else -> 1f
-}
 
 @Composable
 private fun categoryTitle(category: String): String = when (category) {
