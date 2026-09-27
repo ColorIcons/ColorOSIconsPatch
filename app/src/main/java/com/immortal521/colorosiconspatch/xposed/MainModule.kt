@@ -11,6 +11,7 @@ import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface
 import java.lang.ref.WeakReference
 
+@SuppressLint("PrivateApi")
 class MainModule : XposedModule() {
     companion object {
         private const val TAG = "ColorOSIconsPatch"
@@ -41,11 +42,7 @@ class MainModule : XposedModule() {
                 ?.takeIf { it.isNotBlank() }
                 ?: "android.app.Application"
             val applicationClass = classLoader.loadClass(applicationName)
-            val attachBaseContext = findMethod(
-                applicationClass,
-                "attachBaseContext",
-                Context::class.java
-            )
+            val attachBaseContext = findAttachBaseContext(applicationClass)
             hook(attachBaseContext).intercept { chain ->
                 val result = chain.proceed()
                 val context = chain.thisObject as? Context
@@ -78,20 +75,16 @@ class MainModule : XposedModule() {
         }
     }
 
-    private fun findMethod(
-        type: Class<*>,
-        name: String,
-        vararg parameterTypes: Class<*>
-    ): java.lang.reflect.Method {
+    private fun findAttachBaseContext(type: Class<*>): java.lang.reflect.Method {
         var current: Class<*>? = type
         while (current != null) {
             try {
-                return current.getDeclaredMethod(name, *parameterTypes)
+                return current.getDeclaredMethod("attachBaseContext", Context::class.java)
             } catch (_: NoSuchMethodException) {
                 current = current.superclass
             }
         }
-        throw NoSuchMethodException("$name on ${type.name}")
+        throw NoSuchMethodException("attachBaseContext on ${type.name}")
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -116,8 +109,8 @@ class MainModule : XposedModule() {
             )
             receiver = refreshReceiver
             log(Log.INFO, TAG, "Refresh receiver registered")
-        } catch (error: Throwable) {
-            log(Log.ERROR, TAG, "Failed to register refresh receiver", error)
+        } catch (_: Throwable) {
+            log(Log.ERROR, TAG, "Failed to register refresh receiver")
         }
     }
 
@@ -131,7 +124,7 @@ class MainModule : XposedModule() {
             refresh.isAccessible = true
             refresh.invoke(appState)
             log(Log.INFO, TAG, "Launcher icons refreshed")
-        } catch (error: NoSuchMethodException) {
+        } catch (_: NoSuchMethodException) {
             refreshWithModelFallback(context)
         } catch (error: Throwable) {
             log(Log.ERROR, TAG, "Failed to refresh launcher icons", error)
