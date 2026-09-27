@@ -1,6 +1,7 @@
 package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
+import android.os.Environment
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,7 +15,11 @@ private const val MODULE_VERSION = "0.4.0"
 private const val MODULE_VERSION_CODE = "000040"
 private const val MODULE_ASSET_ROOT = "module"
 private const val PERSISTENT_ICONS = "/data/adb/ColorOSIconsPatch/uxicons"
-private const val PUBLIC_ZIP = "/sdcard/Download/ColorOSIconsPatch.zip"
+private val publicDownloadDirectory = File(
+    Environment.getExternalStorageDirectory(),
+    "Download"
+)
+private val publicZip = File(publicDownloadDirectory, "ColorOSIconsPatch.zip")
 
 enum class ModuleOperationStatus {
     SUCCESS,
@@ -37,7 +42,7 @@ suspend fun prepareAndInstallModule(context: Context): ModuleOperationResult =
             when (val installer = detectInstaller()) {
                 RootImplementation.APATCH -> ModuleOperationResult(
                     ModuleOperationStatus.MANUAL_INSTALL_REQUIRED,
-                    context.getString(com.immortal521.colorosiconspatch.R.string.apatch_import_module, PUBLIC_ZIP),
+                    context.getString(com.immortal521.colorosiconspatch.R.string.apatch_import_module, publicZip.path),
                     copyZipToPublicStorage(zip)
                 )
                 RootImplementation.MAGISK,
@@ -70,7 +75,7 @@ private fun createModuleZip(context: Context, output: File) {
     if (temporary.exists()) temporary.delete()
     try {
         ZipOutputStream(temporary.outputStream().buffered()).use { zip ->
-            addText(zip, "module.prop", moduleProp())
+            addText(zip, moduleProp())
             addAsset(zip, context, "customize.sh")
             addAsset(zip, context, "action.sh")
             addAsset(zip, context, "post-fs-data.sh")
@@ -100,8 +105,8 @@ private fun addAsset(zip: ZipOutputStream, context: Context, name: String) {
     }
 }
 
-private fun addText(zip: ZipOutputStream, name: String, content: String) {
-    zip.putNextEntry(ZipEntry(name))
+private fun addText(zip: ZipOutputStream, content: String) {
+    zip.putNextEntry(ZipEntry("module.prop"))
     zip.write(content.toByteArray(Charsets.UTF_8))
     zip.closeEntry()
 }
@@ -120,9 +125,9 @@ private fun installModule(context: Context, zip: File, implementation: RootImple
 
 private fun copyZipToPublicStorage(zip: File): File? {
     val result = Shell.cmd(
-        "mkdir -p /sdcard/Download && cp ${shellQuote(zip.absolutePath)} ${shellQuote(PUBLIC_ZIP)}"
+        "mkdir -p ${shellQuote(publicDownloadDirectory.path)} && cp ${shellQuote(zip.absolutePath)} ${shellQuote(publicZip.path)}"
     ).exec()
-    return if (result.isSuccess) File(PUBLIC_ZIP) else zip
+    return if (result.isSuccess) publicZip else zip
 }
 
 private fun ensurePersistentIconDirectory(context: Context) {
