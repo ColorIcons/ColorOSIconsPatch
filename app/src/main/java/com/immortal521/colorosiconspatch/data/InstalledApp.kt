@@ -2,6 +2,7 @@ package com.immortal521.colorosiconspatch.data
 
 import android.annotation.SuppressLint
 import android.content.Context
+import java.io.File
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 
@@ -9,6 +10,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 data class InstalledApp(
     val label: String,
     val packageName: String,
+    val size: Long,
     val icon: androidx.compose.ui.graphics.ImageBitmap,
     val isAdapted: Boolean = false,
     val isSystem: Boolean = false,
@@ -33,6 +35,7 @@ fun loadInstalledApps(
             InstalledApp(
                 label = applicationInfo.loadLabel(packageManager).toString(),
                 packageName = applicationInfo.packageName,
+                size = File(applicationInfo.sourceDir).length(),
                 icon = applicationInfo.loadIcon(packageManager).toBitmap().asImageBitmap(),
                 isAdapted = applicationInfo.packageName in adaptedPackages,
                 isSystem = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0 ||

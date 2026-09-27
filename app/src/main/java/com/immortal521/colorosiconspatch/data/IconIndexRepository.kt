@@ -1,6 +1,9 @@
 package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -30,6 +33,28 @@ data class IconPackage(
     val packageName: String,
     val files: List<IconFile>
 )
+
+fun loadCachedIconPackage(context: Context, packageName: String): IconPackage? {
+    val cache = File(context.filesDir, INDEX_CACHE)
+    if (!cache.isFile) return null
+    return runCatching {
+        parseIndex(cache.readText(), DOWNLOAD_VARIANTS.toSet()).second[packageName]
+    }.getOrNull()
+}
+
+fun loadCachedIconBitmap(context: Context, packageName: String, fileName: String): ImageBitmap? {
+    val target = "$PERSISTENT_ICONS/$packageName/$fileName"
+    val cached = File.createTempFile("icon-preview-", ".png", context.cacheDir)
+    return try {
+        val result = com.topjohnwu.superuser.Shell.cmd(
+            "cp ${shellQuote(target)} ${shellQuote(cached.absolutePath)}"
+        ).exec()
+        if (!result.isSuccess) return null
+        BitmapFactory.decodeFile(cached.absolutePath)?.asImageBitmap()
+    } finally {
+        cached.delete()
+    }
+}
 
 data class IconIndexLoadResult(
     val packages: Map<String, IconPackage>,

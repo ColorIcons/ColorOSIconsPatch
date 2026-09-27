@@ -45,7 +45,8 @@ fun AppsScreen(
     modifier: Modifier = Modifier,
     apps: List<InstalledApp>?,
     indexError: String? = null,
-    contentPadding: PaddingValues = PaddingValues()
+    contentPadding: PaddingValues = PaddingValues(),
+    onAppClick: (InstalledApp) -> Unit = {}
 ) {
     var searchText by rememberSaveable { mutableStateOf("") }
     var sortByPackage by rememberSaveable { mutableStateOf(false) }
@@ -173,7 +174,7 @@ fun AppsScreen(
                         }
                     }
                     itemsIndexed(currentApps, key = { _, app -> app.packageName }) { index, app ->
-                        AppRow(app, index = index, count = currentApps.size)
+                        AppRow(app, index = index, count = currentApps.size, onClick = { onAppClick(app) })
                     }
                 }
             }
@@ -182,8 +183,9 @@ fun AppsScreen(
 }
 
 @Composable
-private fun AppRow(app: InstalledApp, index: Int, count: Int) {
+private fun AppRow(app: InstalledApp, index: Int, count: Int, onClick: () -> Unit) {
     SegmentedListItem(
+        onClick = onClick,
         shapes = ListItemDefaults.segmentedShapes(index, count),
         colors = ListItemDefaults.segmentedColors(
             containerColor = MaterialTheme.colorScheme.surfaceBright,

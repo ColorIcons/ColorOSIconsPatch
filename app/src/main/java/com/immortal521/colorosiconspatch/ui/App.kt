@@ -29,6 +29,7 @@ import com.immortal521.colorosiconspatch.data.IconIndexLoadResult
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
 import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.InstalledApp
+import com.immortal521.colorosiconspatch.ui.screen.AppDetailScreen
 import com.immortal521.colorosiconspatch.data.PackageChangeReceiver
 import com.immortal521.colorosiconspatch.data.buildIconSyncPlan
 import com.immortal521.colorosiconspatch.data.loadIconIndex
@@ -76,6 +77,10 @@ private sealed interface AppRoute : NavKey, Parcelable {
     @Serializable
     @Parcelize
     data object DownloadSettings : AppRoute
+
+    @Serializable
+    @Parcelize
+    data class AppDetail(val packageName: String) : AppRoute
 }
 
 @Composable
@@ -88,13 +93,16 @@ private fun MainContent() {
         onBack = { if (backStack.size > 1) backStack.removeLastOrNull() }
     ) {
         entry<AppRoute.Main>(swipeDismiss = NavSwipeDirection.LeftToRight) {
-            MainPagerScreen { page ->
+            MainPagerScreen(
+                onOpenSettingsPage = { page ->
                 when (page) {
                     SettingsPage.THEME -> backStack.add(AppRoute.ThemeSettings)
                     SettingsPage.DOWNLOAD -> backStack.add(AppRoute.DownloadSettings)
                     SettingsPage.ROOT -> Unit
                 }
-            }
+            },
+                onOpenApp = { app -> backStack.add(AppRoute.AppDetail(app.packageName)) }
+            )
         }
         entry<AppRoute.ThemeSettings>(swipeDismiss = NavSwipeDirection.LeftToRight) {
             ThemeSettingsScreen(onBack = { backStack.removeLastOrNull() })
@@ -102,11 +110,20 @@ private fun MainContent() {
         entry<AppRoute.DownloadSettings>(swipeDismiss = NavSwipeDirection.LeftToRight) {
             DownloadSettingsScreen(onBack = { backStack.removeLastOrNull() })
         }
+        entry<AppRoute.AppDetail>(swipeDismiss = NavSwipeDirection.LeftToRight) { route ->
+            AppDetailScreen(
+                packageName = route.packageName,
+                onBack = { backStack.removeLastOrNull() }
+            )
+        }
     }
 }
 
 @Composable
-private fun MainPagerScreen(onOpenSettingsPage: (SettingsPage) -> Unit) {
+private fun MainPagerScreen(
+    onOpenSettingsPage: (SettingsPage) -> Unit,
+    onOpenApp: (InstalledApp) -> Unit
+) {
     val context = LocalContext.current
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val pagerState = rememberPagerState(initialPage = selectedTab) { 3 }
@@ -222,7 +239,8 @@ private fun MainPagerScreen(onOpenSettingsPage: (SettingsPage) -> Unit) {
                 1 -> AppsScreen(
                     apps = installedApps,
                     indexError = iconIndexError,
-                    contentPadding = mainContentPadding
+                    contentPadding = mainContentPadding,
+                    onAppClick = onOpenApp
                 )
 
                 2 -> SettingsScreen(
