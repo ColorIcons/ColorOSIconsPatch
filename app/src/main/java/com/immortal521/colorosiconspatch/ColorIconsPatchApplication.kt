@@ -1,6 +1,7 @@
 package com.immortal521.colorosiconspatch
 
 import android.app.Application
+import com.immortal521.colorosiconspatch.data.UpdateDownloadCleanup
 import com.immortal521.colorosiconspatch.data.XposedServiceState
 import com.immortal521.colorosiconspatch.data.loadAppSettings
 import com.immortal521.colorosiconspatch.data.setPredictiveBackEnabled
@@ -11,6 +12,7 @@ class ColorIconsPatchApplication : Application(), XposedServiceHelper.OnServiceL
     override fun onCreate() {
         super.onCreate()
         setPredictiveBackEnabled(this, loadAppSettings(this).predictiveBack)
+        UpdateDownloadCleanup.clear(this)
         XposedServiceHelper.registerListener(this)
     }
 

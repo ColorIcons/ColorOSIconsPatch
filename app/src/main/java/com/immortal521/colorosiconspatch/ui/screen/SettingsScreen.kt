@@ -88,7 +88,7 @@ import com.immortal521.colorosiconspatch.data.DOWNLOAD_VARIANTS
 import com.immortal521.colorosiconspatch.data.ThemeMode
 import com.immortal521.colorosiconspatch.data.setAppLanguage
 import com.immortal521.colorosiconspatch.data.setPredictiveBackEnabled
-import com.immortal521.colorosiconspatch.data.UpdateDownloadReceiver
+import com.immortal521.colorosiconspatch.data.UpdateDownloadCleanup
 import com.immortal521.colorosiconspatch.ui.component.material.ExpressiveToggleButton
 import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
 import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
@@ -663,7 +663,7 @@ private suspend fun downloadUpdate(
         .setAllowedOverRoaming(true)
         .setDestinationInExternalFilesDir(context, android.os.Environment.DIRECTORY_DOWNLOADS, filename)
     val id = manager.enqueue(request)
-    UpdateDownloadReceiver.rememberDownload(context, id, filename)
+    UpdateDownloadCleanup.rememberDownload(context, id, filename)
     var finished = false
     var downloadedUri: Uri? = null
     while (!finished) {
