@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.ModuleOperationStatus
 import com.immortal521.colorosiconspatch.data.checkModule
+import com.immortal521.colorosiconspatch.data.checkXposedActivation
 import com.immortal521.colorosiconspatch.data.checkRoot
 import com.immortal521.colorosiconspatch.data.prepareAndInstallModule
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
@@ -76,6 +77,10 @@ private fun InitializationScreen(
         environmentCheck = environmentCheck.copy(module = CheckStatus.CHECKING)
     }
 
+    fun checkXposed() {
+        environmentCheck = environmentCheck.copy(xposed = CheckStatus.UNKNOWN)
+    }
+
     LaunchedEffect(environmentCheck.root) {
         if (environmentCheck.root == CheckStatus.CHECKING) {
             environmentCheck = environmentCheck.copy(root = checkRoot(context))
@@ -96,6 +101,15 @@ private fun InitializationScreen(
         }
     }
 
+    LaunchedEffect(environmentCheck.root, environmentCheck.module) {
+        if (environmentCheck.root == CheckStatus.PASSED &&
+            environmentCheck.module == CheckStatus.PASSED
+        ) {
+            environmentCheck = environmentCheck.copy(xposed = CheckStatus.CHECKING)
+            environmentCheck = environmentCheck.copy(xposed = checkXposedActivation(context))
+        }
+    }
+
     AnimatedVisibility(
         visible = true,
         modifier = Modifier.fillMaxSize(),
@@ -106,12 +120,14 @@ private fun InitializationScreen(
             modifier = Modifier.fillMaxSize(),
             rootStatus = environmentCheck.root,
             moduleStatus = environmentCheck.module,
+            xposedStatus = environmentCheck.xposed,
             rootImplementation = environmentCheck.implementation,
             onRequestRoot = ::requestRoot,
             onInstallModule = ::installModule,
             moduleInstallStatus = moduleInstallStatus,
             moduleInstallMessage = moduleInstallMessage,
-            onContinue = onComplete
+            onContinue = onComplete,
+            onCheckXposed = ::checkXposed
         )
     }
 }

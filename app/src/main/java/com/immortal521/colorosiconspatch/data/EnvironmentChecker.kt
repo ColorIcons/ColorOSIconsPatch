@@ -25,10 +25,13 @@ data class EnvironmentCheckResult(
     val root: CheckStatus = CheckStatus.UNKNOWN,
     val module: CheckStatus = CheckStatus.UNKNOWN,
     val implementation: RootImplementation = RootImplementation.UNKNOWN,
-    val susfs: CheckStatus = CheckStatus.UNKNOWN
+    val susfs: CheckStatus = CheckStatus.UNKNOWN,
+    val xposed: CheckStatus = CheckStatus.UNKNOWN
 ) {
     val ready: Boolean
-        get() = root == CheckStatus.PASSED && module == CheckStatus.PASSED
+        get() = root == CheckStatus.PASSED &&
+            module == CheckStatus.PASSED &&
+            xposed == CheckStatus.PASSED
 }
 
 private const val PREFERENCES = "environment_check"
@@ -36,6 +39,7 @@ private const val ROOT_STATUS = "root_status"
 private const val MODULE_STATUS = "module_status"
 private const val ROOT_IMPLEMENTATION = "root_implementation"
 private const val SUSFS_STATUS = "susfs_status"
+private const val XPOSED_STATUS = "xposed_status"
 private const val MODULE_ID = "ColorOSIconsPatch"
 
 fun loadEnvironmentCheck(context: Context): EnvironmentCheckResult {
@@ -44,7 +48,8 @@ fun loadEnvironmentCheck(context: Context): EnvironmentCheckResult {
         root = readStatus(preferences.getString(ROOT_STATUS, null)),
         module = readStatus(preferences.getString(MODULE_STATUS, null)),
         implementation = readImplementation(preferences.getString(ROOT_IMPLEMENTATION, null)),
-        susfs = readStatus(preferences.getString(SUSFS_STATUS, null))
+        susfs = readStatus(preferences.getString(SUSFS_STATUS, null)),
+        xposed = readStatus(preferences.getString(XPOSED_STATUS, null))
     )
 }
 

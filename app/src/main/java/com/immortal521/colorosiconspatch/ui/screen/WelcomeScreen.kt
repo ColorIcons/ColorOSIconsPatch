@@ -46,6 +46,7 @@ private enum class WelcomeStep {
     INTRO,
     ROOT,
     MODULE,
+    XPOSED,
     COMPLETE
 }
 
@@ -54,19 +55,24 @@ fun WelcomeScreen(
     modifier: Modifier = Modifier,
     rootStatus: CheckStatus,
     moduleStatus: CheckStatus,
+    xposedStatus: CheckStatus,
     rootImplementation: RootImplementation,
     onRequestRoot: () -> Unit,
     onInstallModule: () -> Unit,
     moduleInstallStatus: ModuleOperationStatus?,
     moduleInstallMessage: String?,
-    onContinue: () -> Unit
+    onContinue: () -> Unit,
+    onCheckXposed: () -> Unit
 ) {
     var introComplete by rememberSaveable { mutableStateOf(false) }
     val entered = remember { MutableTransitionState(false) }
     LaunchedEffect(Unit) { entered.targetState = true }
     val step = when {
         !introComplete -> WelcomeStep.INTRO
-        rootStatus == CheckStatus.PASSED && moduleStatus == CheckStatus.PASSED -> WelcomeStep.COMPLETE
+        rootStatus == CheckStatus.PASSED &&
+            moduleStatus == CheckStatus.PASSED &&
+            xposedStatus == CheckStatus.PASSED -> WelcomeStep.COMPLETE
+        rootStatus == CheckStatus.PASSED && moduleStatus == CheckStatus.PASSED -> WelcomeStep.XPOSED
         rootStatus == CheckStatus.PASSED -> WelcomeStep.MODULE
         else -> WelcomeStep.ROOT
     }
@@ -93,6 +99,7 @@ fun WelcomeScreen(
                     WelcomeStep.INTRO -> Icons.Filled.Palette
                     WelcomeStep.ROOT -> Icons.Filled.Security
                     WelcomeStep.MODULE -> Icons.Filled.Extension
+                    WelcomeStep.XPOSED -> Icons.Filled.Security
                     WelcomeStep.COMPLETE -> Icons.Filled.CheckCircle
                 },
                 contentDescription = null,
@@ -113,12 +120,14 @@ fun WelcomeScreen(
                 step = currentStep,
                 rootStatus = rootStatus,
                 moduleStatus = moduleStatus,
+                xposedStatus = xposedStatus,
                 rootImplementation = rootImplementation,
                 onRequestRoot = onRequestRoot,
                 onInstallModule = onInstallModule,
                 moduleInstallStatus = moduleInstallStatus,
                 moduleInstallMessage = moduleInstallMessage,
                 onContinue = onContinue,
+                onCheckXposed = onCheckXposed,
                 onStart = { introComplete = true }
             )
         }
@@ -131,12 +140,14 @@ private fun StepContent(
     step: WelcomeStep,
     rootStatus: CheckStatus,
     moduleStatus: CheckStatus,
+    xposedStatus: CheckStatus,
     rootImplementation: RootImplementation,
     onRequestRoot: () -> Unit,
     onInstallModule: () -> Unit,
     moduleInstallStatus: ModuleOperationStatus?,
     moduleInstallMessage: String?,
     onContinue: () -> Unit,
+    onCheckXposed: () -> Unit,
     onStart: () -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -195,6 +206,20 @@ private fun StepContent(
                         modifier = Modifier.padding(top = 16.dp)
                     )
                 }
+            }
+            WelcomeStep.XPOSED -> {
+                Text("检查 LSPosed 激活状态", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    "请在 LSPosed 中启用本应用，并勾选 ColorOS Launcher 作用域。",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+                StatusText(xposedStatus, "LSPosed 模块激活")
+                ActionForStatus(
+                    status = xposedStatus,
+                    actionLabel = "重新检查 LSPosed",
+                    onClick = onCheckXposed
+                )
             }
             WelcomeStep.COMPLETE -> {
                 Text("准备完成", style = MaterialTheme.typography.headlineSmall)

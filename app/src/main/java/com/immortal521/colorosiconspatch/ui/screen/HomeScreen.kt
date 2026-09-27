@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,6 +45,7 @@ import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
 import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.RootImplementation
+import com.immortal521.colorosiconspatch.data.XposedServiceState
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -60,6 +62,12 @@ fun HomeScreen(
 ) {
     var showRefreshConfirmation by remember { mutableStateOf(false) }
     val environment = loadEnvironmentCheck(LocalContext.current)
+    val xposedService by XposedServiceState.service.collectAsState()
+    val xposedStatus = if (xposedService != null) {
+        CheckStatus.PASSED
+    } else {
+        CheckStatus.FAILED
+    }
     val androidVersion = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
     val securityPatch = Build.VERSION.SECURITY_PATCH.ifBlank { "未知" }
     val deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
@@ -82,7 +90,8 @@ fun HomeScreen(
             RootStatusCard(
                 implementation = environment.implementation,
                 root = environment.root,
-                module = environment.module
+                module = environment.module,
+                xposed = xposedStatus
             )
 
             if (plan == null || plan.totalChanges > 0 || syncing || error != null) {
@@ -132,29 +141,40 @@ fun HomeScreen(
 private fun RootStatusCard(
     implementation: RootImplementation,
     root: CheckStatus,
-    module: CheckStatus
+    module: CheckStatus,
+    xposed: CheckStatus
 ) {
-    val ready = root == CheckStatus.PASSED && module == CheckStatus.PASSED
+    val ready = root == CheckStatus.PASSED &&
+        module == CheckStatus.PASSED &&
+        xposed == CheckStatus.PASSED
     val containerColor = if (ready) {
         MaterialTheme.colorScheme.secondaryContainer
     } else {
         MaterialTheme.colorScheme.errorContainer
     }
     val contentColor = MaterialTheme.colorScheme.contentColorFor(containerColor)
+    val checking = root == CheckStatus.UNKNOWN ||
+        module == CheckStatus.UNKNOWN ||
+        xposed == CheckStatus.UNKNOWN ||
+        root == CheckStatus.CHECKING ||
+        module == CheckStatus.CHECKING ||
+        xposed == CheckStatus.CHECKING
     val icon = when {
         ready -> Icons.Rounded.CheckCircle
-        root == CheckStatus.UNKNOWN || module == CheckStatus.UNKNOWN -> Icons.Rounded.Warning
+        checking -> Icons.Rounded.Warning
         else -> Icons.Rounded.Block
     }
     val title = when {
         ready -> "环境正常"
-        root == CheckStatus.UNKNOWN || module == CheckStatus.UNKNOWN -> "正在检查环境"
+        checking -> "正在检查环境"
         else -> "环境未就绪"
     }
     val summary = when {
-        ready -> "${implementation.displayName} · 图标模块已加载"
+        ready -> "${implementation.displayName} · 图标模块和 LSPosed 均已激活"
+        checking -> "${implementation.displayName} · 正在确认 LSPosed 是否已激活"
         root != CheckStatus.PASSED -> "${implementation.displayName} · Root 权限不可用"
-        else -> "${implementation.displayName} · 图标模块未安装"
+        module != CheckStatus.PASSED -> "${implementation.displayName} · 图标模块未安装"
+        else -> "${implementation.displayName} · LSPosed 未激活本模块"
     }
 
     Surface(

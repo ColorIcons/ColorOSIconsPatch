@@ -29,6 +29,7 @@ import com.immortal521.colorosiconspatch.data.loadIconIndex
 import com.immortal521.colorosiconspatch.data.syncIconResources
 import com.immortal521.colorosiconspatch.data.loadInstalledApps
 import com.immortal521.colorosiconspatch.data.PackageChangeReceiver
+import com.immortal521.colorosiconspatch.data.sendLauncherRefresh
 import com.immortal521.colorosiconspatch.ui.navigation.MainNavigationBar
 import com.immortal521.colorosiconspatch.ui.onboarding.InitializationFlow
 import com.immortal521.colorosiconspatch.ui.screen.AppsScreen
@@ -128,6 +129,7 @@ private fun MainContent() {
                     progress = syncProgress,
                     syncing = syncing,
                     error = syncError,
+                    onRefreshLauncher = { sendLauncherRefresh(context) },
                     onSync = {
                         val apps = installedApps ?: return@HomeScreen
                         val index = iconIndex ?: return@HomeScreen

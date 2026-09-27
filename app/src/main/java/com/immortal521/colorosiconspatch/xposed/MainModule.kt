@@ -14,12 +14,14 @@ import java.lang.ref.WeakReference
 class MainModule : XposedModule() {
     companion object {
         private const val TAG = "ColorOSIconsPatch"
-        private const val ACTION_REFRESH = "com.immortal.coloros.iconpatch.REFRESH_ICONS"
+        private const val ACTION_REFRESH = "com.immortal521.colorosiconspatch.action.REFRESH_LAUNCHER_ICONS"
+        private const val ACTION_PING = "com.immortal521.colorosiconspatch.action.CHECK_LSPOSED"
         private const val LAUNCHER_PACKAGE = "com.android.launcher"
         private const val LAUNCHER3_PACKAGE = "com.android.launcher3"
 
         private var launcherRef = WeakReference<Context>(null)
         private var receiver: BroadcastReceiver? = null
+        private val hookedPackages = mutableSetOf<String>()
     }
 
     override fun onModuleLoaded(param: XposedModuleInterface.ModuleLoadedParam) {
@@ -29,14 +31,37 @@ class MainModule : XposedModule() {
     override fun onPackageLoaded(param: XposedModuleInterface.PackageLoadedParam) {
         val packageName = param.packageName
         if (packageName != LAUNCHER_PACKAGE && packageName != LAUNCHER3_PACKAGE) return
-
-        val launcherClassName = when (packageName) {
-            LAUNCHER3_PACKAGE -> "com.android.launcher3.Launcher"
-            else -> "com.android.launcher.Launcher"
+        synchronized(hookedPackages) {
+            if (!hookedPackages.add(packageName)) return
         }
 
         try {
-            val launcherClass = param.defaultClassLoader.loadClass(launcherClassName)
+            val classLoader = param.defaultClassLoader
+            val applicationName = param.applicationInfo.className
+                ?.takeIf { it.isNotBlank() }
+                ?: "android.app.Application"
+            val applicationClass = classLoader.loadClass(applicationName)
+            val attachBaseContext = findMethod(
+                applicationClass,
+                "attachBaseContext",
+                Context::class.java
+            )
+            hook(attachBaseContext).intercept { chain ->
+                val result = chain.proceed()
+                val context = chain.thisObject as? Context
+                if (context != null) {
+                    launcherRef = WeakReference(context)
+                    registerReceiver(context)
+                    log(Log.INFO, TAG, "Launcher application captured: $packageName")
+                }
+                result
+            }
+
+            val launcherClassName = when (packageName) {
+                LAUNCHER3_PACKAGE -> "com.android.launcher3.Launcher"
+                else -> "com.android.launcher.Launcher"
+            }
+            val launcherClass = classLoader.loadClass(launcherClassName)
             val onCreate = launcherClass.getDeclaredMethod("onCreate", Bundle::class.java)
             hook(onCreate).intercept { chain ->
                 val result = chain.proceed()
@@ -44,14 +69,29 @@ class MainModule : XposedModule() {
                 if (context != null) {
                     launcherRef = WeakReference(context)
                     registerReceiver(context)
-                    log(Log.INFO, TAG, "Launcher captured: $packageName")
                 }
                 result
             }
-            log(Log.INFO, TAG, "Hook installed: $launcherClassName.onCreate")
+            log(Log.INFO, TAG, "Hooks installed for $packageName")
         } catch (error: Throwable) {
-            log(Log.ERROR, TAG, "Failed to hook $launcherClassName", error)
+            log(Log.ERROR, TAG, "Failed to hook $packageName", error)
         }
+    }
+
+    private fun findMethod(
+        type: Class<*>,
+        name: String,
+        vararg parameterTypes: Class<*>
+    ): java.lang.reflect.Method {
+        var current: Class<*>? = type
+        while (current != null) {
+            try {
+                return current.getDeclaredMethod(name, *parameterTypes)
+            } catch (_: NoSuchMethodException) {
+                current = current.superclass
+            }
+        }
+        throw NoSuchMethodException("$name on ${type.name}")
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -59,13 +99,19 @@ class MainModule : XposedModule() {
         if (receiver != null) return
         val refreshReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == ACTION_REFRESH) refreshLauncher()
+                when (intent?.action) {
+                    ACTION_PING -> setResultCode(android.app.Activity.RESULT_OK)
+                    ACTION_REFRESH -> refreshLauncher()
+                }
             }
         }
         try {
             context.registerReceiver(
                 refreshReceiver,
-                IntentFilter(ACTION_REFRESH),
+                IntentFilter().apply {
+                    addAction(ACTION_PING)
+                    addAction(ACTION_REFRESH)
+                },
                 Context.RECEIVER_EXPORTED
             )
             receiver = refreshReceiver
