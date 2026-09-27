@@ -43,7 +43,7 @@ data class AppSettings(
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     val predictiveBack: Boolean = true,
-    val autoCheckUpdates: Boolean = false
+    val autoCheckUpdates: Boolean = true
 ) {
     val indexUrl: String
         get() = if (channel == CHANNEL_CLOUDFLARE) CLOUDFLARE_INDEX_URL else GITHUB_INDEX_URL
@@ -72,7 +72,7 @@ fun loadAppSettings(context: Context): AppSettings {
             ColorSpec.SpecVersion.valueOf(prefs.getString(KEY_COLOR_SPEC, ColorSpec.SpecVersion.SPEC_2025.name)!!)
         }.getOrDefault(ColorSpec.SpecVersion.SPEC_2025),
         predictiveBack = prefs.getBoolean(KEY_PREDICTIVE_BACK, true),
-        autoCheckUpdates = prefs.getBoolean(KEY_AUTO_CHECK_UPDATE, false)
+        autoCheckUpdates = prefs.getBoolean(KEY_AUTO_CHECK_UPDATE, true)
     )
 }
 

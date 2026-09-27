@@ -81,6 +81,7 @@ import com.immortal521.colorosiconspatch.data.ThemeMode
 import com.immortal521.colorosiconspatch.data.setAppLanguage
 import com.immortal521.colorosiconspatch.data.setPredictiveBackEnabled
 import com.immortal521.colorosiconspatch.ui.component.material.ExpressiveToggleButton
+import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
 import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
 import com.immortal521.colorosiconspatch.ui.component.material.SegmentedDropdownItem
 import com.immortal521.colorosiconspatch.ui.theme.effectiveFor
@@ -119,25 +120,25 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
     val settings by AppSettingsState.settings.collectAsState()
     var checking by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
-    var languageMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val languages = listOf("系统默认" to "", "简体中文" to "zh-CN", "English" to "en")
 
     SettingsPageScaffold("设置", modifier, padding, null) {
-        SettingsGroup {
-            SwitchItem(
-                icon = Icons.Filled.SystemUpdate,
-                title = "启动时自动检查",
-                summary = "应用启动时检查 GitHub Releases",
-                checked = settings.autoCheckUpdates
-            ) {
-                AppSettingsState.update(context) { it.copy(autoCheckUpdates = !it.autoCheckUpdates) }
-            }
-            ActionItem(
-                icon = Icons.Filled.SystemUpdate,
-                title = "检查应用更新",
-                summary = result ?: "手动检查 GitHub Releases 是否有新版本",
-                trailing = {
+        SegmentedColumn(content = listOf(
+            {
+                SwitchItem(Icons.Filled.SystemUpdate, "启动时自动检查", "应用启动时检查 GitHub Releases", settings.autoCheckUpdates) {
+                    AppSettingsState.update(context) { it.copy(autoCheckUpdates = !it.autoCheckUpdates) }
+                }
+            },
+            {
+                ActionItem(Icons.Filled.SystemUpdate, "检查应用更新", result ?: "手动检查 GitHub Releases 是否有新版本", onClick = {
+                    checking = true
+                    result = null
+                    scope.launch {
+                        result = withContext(Dispatchers.IO) { checkForUpdate() }
+                        checking = false
+                    }
+                }) {
                     Button(
                         onClick = {
                             checking = true
@@ -150,33 +151,28 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
                         enabled = !checking
                     ) { Text(if (checking) "检查中" else "检查") }
                 }
-            )
-            if (checking) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
-        }
-
-        SettingsGroup {
-            ArrowItem(Icons.Filled.Palette, "主题", "颜色、深色模式和动态取色") { open(SettingsPage.THEME) }
-            DropdownItem(
-                icon = Icons.Filled.Language,
-                title = "语言",
-                summary = "应用显示语言",
-                value = languages.firstOrNull { it.second == currentLanguageTag(context) }?.first ?: "系统默认",
-                expanded = languageMenu,
-                onExpand = { languageMenu = true },
-                onDismiss = { languageMenu = false },
-                options = languages.map { it.first },
-                onSelected = { index ->
-                    setAppLanguage(context, languages[index].second)
-                    languageMenu = false
-                }
-            )
-        }
-
-        SettingsGroup {
-            ArrowItem(Icons.Filled.CloudDownload, "下载设置", "下载通道、并发数和图标类型") {
-                open(SettingsPage.DOWNLOAD)
             }
-        }
+        ))
+        if (checking) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+
+        SegmentedColumn(content = listOf(
+            { ArrowItem(Icons.Filled.Palette, "主题", "颜色、深色模式和动态取色") { open(SettingsPage.THEME) } },
+            {
+                val languageIndex = languages.indexOfFirst { it.second == currentLanguageTag(context) }.coerceAtLeast(0)
+                SegmentedDropdownItem(
+                    icon = Icons.Filled.Language,
+                    title = "语言",
+                    summary = "应用显示语言",
+                    items = languages.map { it.first },
+                    selectedIndex = languageIndex,
+                    onItemSelected = { index -> setAppLanguage(context, languages[index].second) }
+                )
+            }
+        ))
+
+        SegmentedColumn(content = listOf(
+            { ArrowItem(Icons.Filled.CloudDownload, "下载设置", "下载通道、并发数和图标类型") { open(SettingsPage.DOWNLOAD) } }
+        ))
     }
 }
 
@@ -269,7 +265,7 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
         )
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            SettingsGroup {
+            SegmentedColumn(content = listOf({
                 SwitchItem(
                     icon = Icons.Filled.MenuOpen,
                     title = "预测性返回手势",
@@ -281,7 +277,7 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
                     setPredictiveBackEnabled(context, enabled)
                     (context as? android.app.Activity)?.recreate()
                 }
-            }
+            }))
         }
     }
 }
@@ -410,21 +406,27 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
     val context = LocalContext.current
     val settings by AppSettingsState.settings.collectAsState()
     SettingsPageScaffold("下载设置", modifier, padding, onBack) {
-        SettingsGroup(title = "下载通道") {
-            RadioItem("GitHub", settings.channel != CHANNEL_CLOUDFLARE) {
-                AppSettingsState.update(context) { it.copy(channel = "github") }
+        Text("下载通道", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        SegmentedColumn(content = listOf(
+            {
+                RadioItem("GitHub", settings.channel != CHANNEL_CLOUDFLARE) {
+                    AppSettingsState.update(context) { it.copy(channel = "github") }
+                }
+            },
+            {
+                RadioItem("Cloudflare", settings.channel == CHANNEL_CLOUDFLARE) {
+                    AppSettingsState.update(context) { it.copy(channel = CHANNEL_CLOUDFLARE) }
+                }
             }
-            RadioItem("Cloudflare", settings.channel == CHANNEL_CLOUDFLARE) {
-                AppSettingsState.update(context) { it.copy(channel = CHANNEL_CLOUDFLARE) }
-            }
-        }
-        SettingsGroup(title = "下载性能") {
+        ))
+        Text("下载性能", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        SegmentedColumn(content = listOf({
             SegmentedListItem(
-                shapes = ListItemDefaults.segmentedShapes(0, 1),
+                shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
                 colors = settingsItemColors(),
                 content = { Text("并发数") },
                 supportingContent = { Text("同时下载的资源数量：${settings.concurrency}") },
-                trailingContent = { Text(settings.concurrency.toString(), color = MaterialTheme.colorScheme.primary) }
+                trailingContent = { Box(contentAlignment = Alignment.Center) { Text(settings.concurrency.toString(), color = MaterialTheme.colorScheme.primary) } }
             )
             Slider(
                 value = settings.concurrency.toFloat(),
@@ -433,7 +435,7 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
                 steps = 14,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
-        }
+        }))
     }
 }
 
@@ -453,14 +455,6 @@ private fun SettingsPageScaffold(title: String, modifier: Modifier, padding: Pad
 }
 
 @Composable
-private fun SettingsGroup(title: String? = null, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        title?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)) }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { content() }
-    }
-}
-
-@Composable
 private fun settingsItemColors() = ListItemDefaults.segmentedColors(
     containerColor = MaterialTheme.colorScheme.surfaceBright,
     disabledContainerColor = MaterialTheme.colorScheme.surfaceBright,
@@ -468,27 +462,36 @@ private fun settingsItemColors() = ListItemDefaults.segmentedColors(
 )
 
 @Composable
-private fun ActionItem(icon: ImageVector, title: String, summary: String, trailing: @Composable () -> Unit) {
+private fun ActionItem(
+    icon: ImageVector,
+    title: String,
+    summary: String,
+    onClick: () -> Unit,
+    trailing: @Composable () -> Unit
+) {
     SegmentedListItem(
-        shapes = ListItemDefaults.segmentedShapes(0, 1),
+        onClick = onClick,
+        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
         colors = settingsItemColors(),
         content = { Text(title) },
         supportingContent = { Text(summary) },
-        leadingContent = { Icon(icon, title) },
-        trailingContent = trailing
+        leadingContent = { Box(contentAlignment = Alignment.Center) { Icon(icon, title) } },
+        trailingContent = { Box(contentAlignment = Alignment.Center) { trailing() } },
+        verticalAlignment = Alignment.CenterVertically
     )
 }
 
 @Composable
 private fun ArrowItem(icon: ImageVector, title: String, summary: String, onClick: () -> Unit) {
     SegmentedListItem(
-        shapes = ListItemDefaults.segmentedShapes(0, 1),
+        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
         colors = settingsItemColors(),
         content = { Text(title) },
         supportingContent = { Text(summary) },
         leadingContent = { Icon(icon, title) },
+        onClick = onClick,
         trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-        modifier = Modifier.clickable(onClick = onClick)
+        verticalAlignment = Alignment.CenterVertically
     )
 }
 
@@ -506,13 +509,14 @@ private fun DropdownItem(
 ) {
     Column {
         SegmentedListItem(
-            shapes = ListItemDefaults.segmentedShapes(0, 1),
+            shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
             colors = settingsItemColors(),
             content = { Text(title) },
             supportingContent = { Text(summary) },
             leadingContent = { Icon(icon, title) },
+            onClick = onExpand,
             trailingContent = { Text(value, color = MaterialTheme.colorScheme.primary) },
-            modifier = Modifier.clickable(onClick = onExpand)
+            verticalAlignment = Alignment.CenterVertically
         )
         if (expanded) {
             DropdownMenu(expanded = true, onDismissRequest = onDismiss) {
@@ -527,24 +531,26 @@ private fun DropdownItem(
 @Composable
 private fun RadioItem(title: String, selected: Boolean, onClick: () -> Unit) {
     SegmentedListItem(
-        shapes = ListItemDefaults.segmentedShapes(0, 1),
+        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
         colors = settingsItemColors(),
         content = { Text(title) },
+        onClick = onClick,
         leadingContent = { RadioButton(selected = selected, onClick = onClick) },
-        modifier = Modifier.clickable(onClick = onClick)
+        verticalAlignment = Alignment.CenterVertically
     )
 }
 
 @Composable
 private fun SwitchItem(icon: ImageVector? = null, title: String, summary: String, checked: Boolean, onClick: () -> Unit) {
     SegmentedListItem(
-        shapes = ListItemDefaults.segmentedShapes(0, 1),
+        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
         colors = settingsItemColors(),
         content = { Text(title) },
         supportingContent = { Text(summary) },
-        leadingContent = icon?.let { { Icon(it, title) } },
-        trailingContent = { Switch(checked = checked, onCheckedChange = { onClick() }) },
-        modifier = Modifier.clickable(onClick = onClick)
+        onClick = onClick,
+        leadingContent = icon?.let { { Box(contentAlignment = Alignment.Center) { Icon(it, title) } } },
+        trailingContent = { Box(contentAlignment = Alignment.Center) { Switch(checked = checked, onCheckedChange = { onClick() }) } },
+        verticalAlignment = Alignment.CenterVertically
     )
 }
 
