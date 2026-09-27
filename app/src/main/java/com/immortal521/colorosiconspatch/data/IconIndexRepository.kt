@@ -190,7 +190,7 @@ data class IconSyncProgress(
 
 data class IconSyncResult(val downloaded: Int, val removed: Int)
 
-suspend fun buildIconSyncPlan(
+fun buildIconSyncPlan(
     installedPackages: Set<String>,
     index: IconIndexLoadResult
 ): IconSyncPlan {
@@ -198,7 +198,7 @@ suspend fun buildIconSyncPlan(
     val checksums = readLocalChecksums()
     val updates = buildList {
         for (requiredFile in index.requiredFiles) {
-            val target = "$PERSISTENT_ICONS/${requiredFile.name}"
+            val target = "$PERSISTENT_ICONS/$requiredFile.name"
             keep += target
             if (checksums[target] != requiredFile.sha256) {
                 add(IconFileUpdate(REQUIRED_PACKAGE, requiredFile, target, requiredFile.size))
@@ -206,7 +206,7 @@ suspend fun buildIconSyncPlan(
         }
         for (packageName in installedPackages.intersect(index.packages.keys)) {
             for (iconFile in index.packages.getValue(packageName).files) {
-                val target = "$PERSISTENT_ICONS/$packageName/${iconFile.name}"
+                val target = "$PERSISTENT_ICONS/$packageName/$iconFile.name"
                 keep += target
                 if (checksums[target] != iconFile.sha256) {
                     add(IconFileUpdate(packageName, iconFile, target, iconFile.size))
@@ -295,19 +295,6 @@ private fun installRootFile(context: Context, source: File, target: String) {
         "cp ${shellQuote(source.absolutePath)} ${shellQuote(target)} && " +
         "chmod 0644 ${shellQuote(target)}"
     check(runRoot(command).first == 0) { context.getString(com.immortal521.colorosiconspatch.R.string.write_icons_failed) }
-}
-
-private fun removeStaleRootFiles(keep: Set<String>, installedPackages: Set<String>) {
-    if (installedPackages.isEmpty()) return
-    val packagePaths = installedPackages.joinToString(" ") {
-        shellQuote("$PERSISTENT_ICONS/$it")
-    }
-    val staleCondition = keep.joinToString(" && ") {
-        "[ \"\$file\" != ${shellQuote(it)} ]"
-    }.ifBlank { "true" }
-    val command = "find $packagePaths -type f -name '*.png' -print0 | while IFS= read -r -d '' file; do " +
-        "if $staleCondition; then rm -f \"\$file\"; fi; done"
-    runRoot(command)
 }
 
 private fun downloadFile(path: String, output: File, baseUrl: String) {
