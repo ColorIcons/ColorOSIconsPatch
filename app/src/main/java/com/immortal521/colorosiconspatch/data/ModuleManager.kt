@@ -11,8 +11,11 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 private const val MODULE_ID = "ColorOSIconsPatch"
-private const val MODULE_VERSION = "0.4.0"
-private const val MODULE_VERSION_CODE = "000040"
+
+private fun appVersion(context: Context): Pair<String, String> {
+    val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+    return packageInfo.versionName.orEmpty() to packageInfo.longVersionCode.toString()
+}
 private const val MODULE_ASSET_ROOT = "module"
 private const val PERSISTENT_ICONS = "/data/adb/ColorOSIconsPatch/uxicons"
 private val publicDownloadDirectory = File(
@@ -88,7 +91,7 @@ private fun createModuleZip(context: Context, output: File) {
     if (temporary.exists()) temporary.delete()
     try {
         ZipOutputStream(temporary.outputStream().buffered()).use { zip ->
-            addText(zip, moduleProp())
+            addText(zip, moduleProp(context))
             addAsset(zip, context, "customize.sh")
             addAsset(zip, context, "action.sh")
             addAsset(zip, context, "post-fs-data.sh")
@@ -101,14 +104,17 @@ private fun createModuleZip(context: Context, output: File) {
     }
 }
 
-private fun moduleProp(): String = """
+private fun moduleProp(context: Context): String {
+    val (version, versionCode) = appVersion(context)
+    return """
     id=$MODULE_ID
     name=ColorOS Icons Patch
-    version=$MODULE_VERSION
-    versionCode=$MODULE_VERSION_CODE
+    version=$version
+    versionCode=$versionCode
     author=immort521
     description=ColorOS Icons Patch
 """.trimIndent() + "\n"
+}
 
 private fun addAsset(zip: ZipOutputStream, context: Context, name: String) {
     context.assets.open("$MODULE_ASSET_ROOT/$name").use { input ->
@@ -122,6 +128,24 @@ private fun addText(zip: ZipOutputStream, content: String) {
     zip.putNextEntry(ZipEntry("module.prop"))
     zip.write(content.toByteArray(Charsets.UTF_8))
     zip.closeEntry()
+}
+
+suspend fun updateInstalledModuleMetadata(context: Context) = withContext(Dispatchers.IO) {
+    val (appVersionName, appVersionCode) = appVersion(context)
+    val version = appVersionName.replace("'", "'\\''")
+    val versionCode = appVersionCode.replace("'", "'\\''")
+    val moduleRoots = listOf(
+        "/data/adb/modules/$MODULE_ID",
+        "/data/adb/modules_update/$MODULE_ID",
+        "/data/adb/modules/${MODULE_ID.lowercase()}",
+        "/data/adb/modules_update/${MODULE_ID.lowercase()}"
+    ).joinToString(" ") { shellQuote("$it/module.prop") }
+    Shell.cmd(
+        "for file in $moduleRoots; do " +
+                "[ -f \"\$file\" ] || continue; " +
+                "sed -i \"s/^version=.*/version=$version/; s/^versionCode=.*/versionCode=$versionCode/\" \"\$file\"; " +
+                "done"
+    ).exec()
 }
 
 private fun detectInstaller(): RootImplementation = detectRootImplementation()
