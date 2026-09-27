@@ -31,6 +31,7 @@ import com.immortal521.colorosiconspatch.data.IconIndexLoadResult
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
 import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.InstalledApp
+import com.immortal521.colorosiconspatch.data.LogStore
 import com.immortal521.colorosiconspatch.data.PackageChangeReceiver
 import com.immortal521.colorosiconspatch.data.buildIconSyncPlan
 import com.immortal521.colorosiconspatch.data.canReadInstalledApps
@@ -234,7 +235,10 @@ private fun MainPagerScreen(
                     progress = syncProgress,
                     syncing = syncing,
                     error = syncError,
-                    onRefreshLauncher = { sendLauncherRefresh(context) },
+                    onRefreshLauncher = {
+                        LogStore.info(context, "Launcher refresh requested")
+                        sendLauncherRefresh(context)
+                    },
                     onOpenLogs = onOpenLogs,
                     onSync = {
                         val apps = installedApps ?: return@HomeScreen
@@ -243,6 +247,10 @@ private fun MainPagerScreen(
                         pagerScope.launch {
                             syncing = true
                             syncError = null
+                            LogStore.info(
+                                context,
+                                "Icon sync started: ${planToSync.totalChanges} changes"
+                            )
                             try {
                                 withContext(Dispatchers.IO) {
                                     syncIconResources(context, planToSync) {
@@ -255,9 +263,11 @@ private fun MainPagerScreen(
                                         index
                                     )
                                 }
+                                LogStore.info(context, "Icon sync completed")
                             } catch (error: Exception) {
                                 syncError = error.message
                                     ?: moduleUpdateFailedMessage
+                                LogStore.error(context, "Icon sync failed: ${syncError}")
                             } finally {
                                 syncing = false
                             }

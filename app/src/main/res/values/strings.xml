@@ -5,6 +5,7 @@
     <string name="nav_apps">Apps</string>
     <string name="nav_settings">Settings</string>
     <string name="logs">Logs</string>
+    <string name="logs_summary">View runtime and LSPosed logs</string>
     <string name="log_filter">Filter logs</string>
     <string name="log_share">Share logs</string>
     <string name="log_save">Save logs</string>

@@ -1,6 +1,7 @@
 package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
+import android.os.Build
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
@@ -106,9 +107,13 @@ object LogStore {
     }
 
     fun zip(context: Context): File = synchronized(lock) {
-        val directory = File(context.filesDir, LOG_DIRECTORY).apply { mkdirs() }
-        val zipFile = File(context.cacheDir, "coloros-icons-patch-logs.zip")
+        File(context.filesDir, LOG_DIRECTORY).mkdirs()
+        val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+        val zipFile = File(context.cacheDir, "ColorOSIconsPatch-$timestamp.zip")
         ZipOutputStream(FileOutputStream(zipFile)).use { zip ->
+            zip.putNextEntry(ZipEntry("environment.txt"))
+            zip.write(environment(context).toByteArray(StandardCharsets.UTF_8))
+            zip.closeEntry()
             LogCategory.entries.forEach { category ->
                 val file = logFile(context, category)
                 if (!file.exists()) return@forEach
@@ -119,6 +124,34 @@ object LogStore {
         }
         zipFile
     }
+
+    fun exportFileName(): String {
+        val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+        return "ColorOSIconsPatch-$timestamp.zip"
+    }
+
+    private fun environment(context: Context): String {
+        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+        val check = loadEnvironmentCheck(context)
+        return buildString {
+            appendLine("app_name=ColorOS Icons Patch")
+            appendLine("app_version=${packageInfo.versionName.orEmpty()}")
+            appendLine("app_version_code=${packageInfo.longVersionCode}")
+            appendLine("android_version=${Build.VERSION.RELEASE}")
+            appendLine("android_sdk=${Build.VERSION.SDK_INT}")
+            appendLine("device_manufacturer=${Build.MANUFACTURER}")
+            appendLine("device_model=${Build.MODEL}")
+            appendLine("rom_version=${Build.DISPLAY}")
+            appendLine("root_status=${check.root}")
+            appendLine("root_manager=${check.implementation.displayName}")
+            appendLine("root_version=${check.rootVersion}")
+            appendLine("module_status=${check.module}")
+            appendLine("susfs_status=${check.susfs}")
+            appendLine("lsposed_status=${check.xposed}")
+            appendLine("lsposed_service_active=${XposedServiceState.active}")
+        }
+    }
+
 
     private fun logFile(context: Context, category: LogCategory) =
         File(File(context.filesDir, LOG_DIRECTORY), category.fileName)

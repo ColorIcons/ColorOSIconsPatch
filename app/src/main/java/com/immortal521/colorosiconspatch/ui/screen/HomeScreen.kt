@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.Security
@@ -26,7 +27,9 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
@@ -129,23 +132,21 @@ fun HomeScreen(
                 deviceModel = deviceModel,
                 kernelVersion = kernelVersion
             )
-            Card(
+            SegmentedListItem(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onOpenLogs,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Description, contentDescription = null)
-                    Text(
-                        stringResource(R.string.logs),
-                        modifier = Modifier.padding(start = 16.dp),
-                        style = MaterialTheme.typography.titleMedium
+                shapes = ListItemDefaults.segmentedShapes(0, 1),
+                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+                leadingContent = { Icon(Icons.Rounded.Description, contentDescription = null) },
+                content = { Text(stringResource(R.string.logs)) },
+                supportingContent = { Text(stringResource(R.string.logs_summary)) },
+                trailingContent = {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null
                     )
                 }
-            }
+            )
         }
     }
 

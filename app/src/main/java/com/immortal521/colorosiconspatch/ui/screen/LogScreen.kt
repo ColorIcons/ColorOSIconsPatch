@@ -3,13 +3,16 @@ package com.immortal521.colorosiconspatch.ui.screen
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -22,6 +25,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VerticalAlignTop
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -36,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -63,10 +69,12 @@ fun LogScreen(onBack: () -> Unit) {
     var showMore by remember { mutableStateOf(false) }
     val saveLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
-            if (uri != null) {
-                val zip = LogStore.zip(context)
-                context.contentResolver.openOutputStream(uri)
-                    ?.use { output -> zip.inputStream().use { it.copyTo(output) } }
+            if (uri != null) scope.launch {
+                val zip = withContext(Dispatchers.IO) { LogStore.zip(context) }
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)
+                        ?.use { output -> zip.inputStream().use { it.copyTo(output) } }
+                }
             }
         }
 
@@ -97,7 +105,8 @@ fun LogScreen(onBack: () -> Unit) {
                 )
             }
             IconButton(onClick = {
-                val file = LogStore.zip(context)
+                scope.launch {
+                    val file = withContext(Dispatchers.IO) { LogStore.zip(context) }
                 val uri =
                     FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
@@ -106,8 +115,9 @@ fun LogScreen(onBack: () -> Unit) {
                     uri
                 ); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }, null))
+                }
             }) { Icon(Icons.Filled.IosShare, stringResource(R.string.log_share)) }
-            IconButton(onClick = { saveLauncher.launch("coloros-icons-patch-logs.zip") }) {
+            IconButton(onClick = { saveLauncher.launch(LogStore.exportFileName()) }) {
                 Icon(
                     Icons.Filled.Save,
                     stringResource(R.string.log_save)
@@ -188,12 +198,63 @@ fun LogScreen(onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(entries) { entry ->
+                    LogEntryCard(entry)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LogEntryCard(entry: LogEntry) {
+    val levelColor = when (entry.level) {
+        LogLevel.DEBUG -> androidx.compose.ui.graphics.Color(0xFF607D8B)
+        LogLevel.INFO -> androidx.compose.ui.graphics.Color(0xFF1976D2)
+        LogLevel.WARN -> androidx.compose.ui.graphics.Color(0xFFF57C00)
+        LogLevel.ERROR -> MaterialTheme.colorScheme.error
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(levelColor, MaterialTheme.shapes.small),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    entry.level.name.first().toString(),
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
-                        "${entry.timestamp}  ${entry.level.name}  ${entry.message}",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 3.dp),
-                        style = MaterialTheme.typography.bodySmall
+                        entry.message,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        entry.timestamp.substringBeforeLast('.'),
+                        modifier = Modifier.padding(start = 8.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

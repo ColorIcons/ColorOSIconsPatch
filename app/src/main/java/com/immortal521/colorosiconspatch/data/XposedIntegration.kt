@@ -16,6 +16,7 @@ fun sendLauncherRefresh(context: Context) {
     LAUNCHER_PACKAGES.forEach { packageName ->
         context.sendBroadcast(Intent(REFRESH_ACTION).setPackage(packageName))
     }
+    LogStore.info(context, "Launcher refresh broadcast sent")
 }
 
 suspend fun checkXposedActivation(context: Context): CheckStatus {
