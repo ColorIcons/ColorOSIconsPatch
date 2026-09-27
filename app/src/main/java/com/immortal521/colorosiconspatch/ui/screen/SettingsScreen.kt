@@ -44,6 +44,8 @@ import androidx.compose.material.icons.filled.MenuOpen
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.SystemUpdate
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
@@ -123,7 +125,7 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
     val context = LocalContext.current
     val settings by AppSettingsState.settings.collectAsState()
     var checking by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf<String?>(null) }
+    var result by remember { mutableStateOf<UpdateCheckResult?>(null) }
     val scope = rememberCoroutineScope()
     val languages = listOf(
         stringResource(R.string.system_default) to "",
@@ -147,25 +149,37 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
                 }
             },
             {
-                ActionItem(Icons.Filled.SystemUpdate, stringResource(R.string.check_updates), result ?: stringResource(R.string.check_updates_summary), onClick = {
-                    checking = true
-                    result = null
-                    scope.launch {
-                        result = withContext(Dispatchers.IO) { checkForUpdate(context) }
-                        checking = false
+                ActionItem(
+                    Icons.Filled.SystemUpdate,
+                    stringResource(R.string.check_updates),
+                    result?.message ?: stringResource(R.string.check_updates_summary),
+                    onClick = {
+                        checking = true
+                        result = null
+                        scope.launch {
+                            result = withContext(Dispatchers.IO) { checkForUpdate(context) }
+                            checking = false
+                        }
                     }
-                }) {
-                    Button(
-                        onClick = {
-                            checking = true
-                            result = null
-                            scope.launch {
-                                result = withContext(Dispatchers.IO) { checkForUpdate(context) }
-                                checking = false
-                            }
-                        },
-                        enabled = !checking
-                    ) { Text(stringResource(if (checking) R.string.checking else R.string.check)) }
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (result?.url != null) {
+                            Button(onClick = {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(result!!.url)))
+                            }) { Text(stringResource(R.string.open)) }
+                        }
+                        Button(
+                            onClick = {
+                                checking = true
+                                result = null
+                                scope.launch {
+                                    result = withContext(Dispatchers.IO) { checkForUpdate(context) }
+                                    checking = false
+                                }
+                            },
+                            enabled = !checking
+                        ) { Text(stringResource(if (checking) R.string.checking else R.string.check)) }
+                    }
                 }
             }
         ))
@@ -619,12 +633,38 @@ private fun SwitchItem(icon: ImageVector? = null, title: String, summary: String
 private fun currentLanguageTag(context: android.content.Context): String =
     context.resources.configuration.locales[0]?.toLanguageTag().orEmpty()
 
-private fun checkForUpdate(context: android.content.Context): String = runCatching {
-    val connection = URL("https://api.github.com/repos/immortal521/ColorIconsPatch/releases/latest")
+private data class UpdateCheckResult(val message: String, val url: String? = null)
+
+private fun checkForUpdate(context: android.content.Context): UpdateCheckResult = runCatching {
+    val connection = URL("https://api.github.com/repos/ColorIcons/ColorOSIconsPatch/releases/latest")
         .openConnection() as HttpURLConnection
     connection.connectTimeout = 8_000
     connection.readTimeout = 8_000
     try {
-        if (connection.responseCode == 404) context.getString(R.string.no_release) else context.getString(R.string.release_available)
+        when (connection.responseCode) {
+            404 -> UpdateCheckResult(context.getString(R.string.no_release))
+            200 -> {
+                val body = connection.inputStream.bufferedReader().use { it.readText() }
+                val tag = org.json.JSONObject(body).optString("tag_name").removePrefix("v")
+                val url = org.json.JSONObject(body).optString("html_url").takeIf { it.isNotBlank() }
+                if (compareVersions(tag, currentVersion(context)) > 0) {
+                    UpdateCheckResult(context.getString(R.string.release_available), url)
+                } else {
+                    UpdateCheckResult(context.getString(R.string.update_up_to_date))
+                }
+            }
+            else -> error("HTTP ${connection.responseCode}")
+        }
     } finally { connection.disconnect() }
-}.getOrElse { context.getString(R.string.update_check_failed, it.message ?: context.getString(R.string.network_unavailable)) }
+}.getOrElse { UpdateCheckResult(context.getString(R.string.update_check_failed, it.message ?: context.getString(R.string.network_unavailable))) }
+
+private fun currentVersion(context: android.content.Context): String =
+    context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+
+private fun compareVersions(left: String, right: String): Int {
+    val a = left.substringBefore('-').split('.').mapNotNull { it.toIntOrNull() }
+    val b = right.substringBefore('-').split('.').mapNotNull { it.toIntOrNull() }
+    return (0 until maxOf(a.size, b.size)).firstNotNullOfOrNull { index ->
+        (a.getOrElse(index) { 0 }).compareTo(b.getOrElse(index) { 0 }).takeIf { it != 0 }
+    } ?: 0
+}
