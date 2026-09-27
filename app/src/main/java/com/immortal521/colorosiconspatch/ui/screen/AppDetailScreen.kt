@@ -63,11 +63,21 @@ fun AppDetailScreen(
     var appPackage by remember(packageName) { mutableStateOf<IconPackage?>(null) }
     var previews by remember(packageName) { mutableStateOf<Map<String, ImageBitmap>>(emptyMap()) }
     val appLabel = remember(packageName) {
-        runCatching { context.packageManager.getApplicationInfo(packageName, 0).loadLabel(context.packageManager).toString() }
+        runCatching {
+            context.packageManager.getApplicationInfo(packageName, 0)
+                .loadLabel(context.packageManager).toString()
+        }
             .getOrDefault(packageName)
     }
     val appSize = remember(packageName) {
-        runCatching { File(context.packageManager.getApplicationInfo(packageName, 0).sourceDir).length() }
+        runCatching {
+            File(
+                context.packageManager.getApplicationInfo(
+                    packageName,
+                    0
+                ).sourceDir
+            ).length()
+        }
             .getOrDefault(0L)
     }
 
@@ -87,7 +97,10 @@ fun AppDetailScreen(
         contentPadding = contentPadding,
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back)
+                )
             }
         }
     ) { contentModifier ->
@@ -140,7 +153,10 @@ fun AppDetailScreen(
                 }
             }
             if (appPackage == null) {
-                Text(stringResource(R.string.no_icons), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.no_icons),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -153,7 +169,11 @@ private data class IconEntry(
     val fileName: String
 )
 
-private fun iconEntries(category: String, files: List<IconFile>, previews: Map<String, ImageBitmap>): List<IconEntry> {
+private fun iconEntries(
+    category: String,
+    files: List<IconFile>,
+    previews: Map<String, ImageBitmap>
+): List<IconEntry> {
     val grouped = files.groupBy { iconSize(it.name) }
     return grouped.keys.sortedWith(compareBy { sizeOrder(it) }).mapNotNull { size ->
         val selected = grouped.getValue(size)
@@ -298,9 +318,11 @@ private fun categoryOf(name: String): String = when {
     else -> "other"
 }
 
-private fun iconSize(name: String): String = Regex("_(1x2|2x1|2x2)").find(name)?.groupValues?.get(1) ?: "1x1"
+private fun iconSize(name: String): String =
+    Regex("_(1x2|2x1|2x2)").find(name)?.groupValues?.get(1) ?: "1x1"
 
-private fun sizeOrder(size: String): Int = listOf("1x1", "1x2", "2x1", "2x2").indexOf(size).let { if (it < 0) 99 else it }
+private fun sizeOrder(size: String): Int =
+    listOf("1x1", "1x2", "2x1", "2x2").indexOf(size).let { if (it < 0) 99 else it }
 
 @Composable
 private fun categoryTitle(category: String): String = when (category) {
@@ -318,4 +340,11 @@ private fun formatBytes(bytes: Long): String = when {
 }
 
 private inline fun <T, R : Any> Iterable<T>.associateNotNull(transform: (T) -> Pair<String, R>?): Map<String, R> =
-    buildMap { for (item in this@associateNotNull) transform(item)?.let { put(it.first, it.second) } }
+    buildMap {
+        for (item in this@associateNotNull) transform(item)?.let {
+            put(
+                it.first,
+                it.second
+            )
+        }
+    }

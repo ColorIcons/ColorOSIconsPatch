@@ -42,16 +42,24 @@ suspend fun prepareAndInstallModule(context: Context): ModuleOperationResult =
             when (val installer = detectInstaller()) {
                 RootImplementation.APATCH -> ModuleOperationResult(
                     ModuleOperationStatus.MANUAL_INSTALL_REQUIRED,
-                    context.getString(com.immortal521.colorosiconspatch.R.string.apatch_import_module, publicZip.path),
+                    context.getString(
+                        com.immortal521.colorosiconspatch.R.string.apatch_import_module,
+                        publicZip.path
+                    ),
                     copyZipToPublicStorage(zip)
                 )
+
                 RootImplementation.MAGISK,
                 RootImplementation.KERNELSU -> {
                     val install = installModule(context, zip, installer)
                     if (install.first == 0 && moduleExists(MODULE_ID)) {
                         ensurePersistentIconDirectory(context)
                         zip.delete()
-                        ModuleOperationResult(ModuleOperationStatus.SUCCESS, context.getString(com.immortal521.colorosiconspatch.R.string.module_installed), null)
+                        ModuleOperationResult(
+                            ModuleOperationStatus.SUCCESS,
+                            context.getString(com.immortal521.colorosiconspatch.R.string.module_installed),
+                            null
+                        )
                     } else {
                         ModuleOperationResult(
                             ModuleOperationStatus.FAILED,
@@ -60,13 +68,18 @@ suspend fun prepareAndInstallModule(context: Context): ModuleOperationResult =
                         )
                     }
                 }
+
                 RootImplementation.UNKNOWN -> ModuleOperationResult(
                     ModuleOperationStatus.FAILED,
                     context.getString(com.immortal521.colorosiconspatch.R.string.root_manager_missing)
                 )
             }
         } catch (error: Exception) {
-            ModuleOperationResult(ModuleOperationStatus.FAILED, error.message ?: context.getString(com.immortal521.colorosiconspatch.R.string.module_prepare_failed))
+            ModuleOperationResult(
+                ModuleOperationStatus.FAILED,
+                error.message
+                    ?: context.getString(com.immortal521.colorosiconspatch.R.string.module_prepare_failed)
+            )
         }
     }
 
@@ -113,7 +126,11 @@ private fun addText(zip: ZipOutputStream, content: String) {
 
 private fun detectInstaller(): RootImplementation = detectRootImplementation()
 
-private fun installModule(context: Context, zip: File, implementation: RootImplementation): Pair<Int, String> {
+private fun installModule(
+    context: Context,
+    zip: File,
+    implementation: RootImplementation
+): Pair<Int, String> {
     val command = when (implementation) {
         RootImplementation.MAGISK -> "magisk --install-module ${shellQuote(zip.absolutePath)}"
         RootImplementation.KERNELSU -> "ksud module install ${shellQuote(zip.absolutePath)}"
@@ -125,7 +142,11 @@ private fun installModule(context: Context, zip: File, implementation: RootImple
 
 private fun copyZipToPublicStorage(zip: File): File? {
     val result = Shell.cmd(
-        "mkdir -p ${shellQuote(publicDownloadDirectory.path)} && cp ${shellQuote(zip.absolutePath)} ${shellQuote(publicZip.path)}"
+        "mkdir -p ${shellQuote(publicDownloadDirectory.path)} && cp ${shellQuote(zip.absolutePath)} ${
+            shellQuote(
+                publicZip.path
+            )
+        }"
     ).exec()
     return if (result.isSuccess) publicZip else zip
 }
@@ -134,7 +155,10 @@ private fun ensurePersistentIconDirectory(context: Context) {
     val result = Shell.cmd(
         "mkdir -p ${shellQuote(PERSISTENT_ICONS)} && chmod 0755 ${shellQuote(PERSISTENT_ICONS)}"
     ).exec()
-    check(result.isSuccess) { result.err.joinToString("\n").ifBlank { context.getString(com.immortal521.colorosiconspatch.R.string.persistent_icon_dir_failed) } }
+    check(result.isSuccess) {
+        result.err.joinToString("\n")
+            .ifBlank { context.getString(com.immortal521.colorosiconspatch.R.string.persistent_icon_dir_failed) }
+    }
 }
 
 private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"

@@ -1,11 +1,11 @@
 package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
+import androidx.core.content.edit
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import androidx.core.content.edit
 
 enum class CheckStatus {
     UNKNOWN,
@@ -59,11 +59,12 @@ suspend fun checkRoot(context: Context): CheckStatus = withContext(Dispatchers.I
     } else {
         CheckStatus.FAILED
     }
-    val susfs = if (shell.isRoot && commandSucceeds("grep -q susfs /proc/filesystems || test -e /sys/fs/susfs")) {
-        CheckStatus.PASSED
-    } else {
-        CheckStatus.FAILED
-    }
+    val susfs =
+        if (shell.isRoot && commandSucceeds("grep -q susfs /proc/filesystems || test -e /sys/fs/susfs")) {
+            CheckStatus.PASSED
+        } else {
+            CheckStatus.FAILED
+        }
     context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         .edit {
             putString(ROOT_STATUS, status.name)
@@ -104,7 +105,8 @@ private fun detectRootVersion(implementation: RootImplementation): String {
         .orEmpty()
     return if (implementation == RootImplementation.KERNELSU) {
         Regex("(?i)(?:KernelSU[: ]*)?(v?\\d+(?:\\.\\d+)+(?:[-+][\\w.-]+)?|\\d{4,})")
-            .find(output)?.value?.removePrefix("KernelSU")?.trim()?.removePrefix(":")?.trim().orEmpty()
+            .find(output)?.value?.removePrefix("KernelSU")?.trim()?.removePrefix(":")?.trim()
+            .orEmpty()
     } else output
 }
 

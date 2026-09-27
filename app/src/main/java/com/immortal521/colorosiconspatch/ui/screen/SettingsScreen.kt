@@ -107,12 +107,20 @@ fun SettingsScreen(
 }
 
 @Composable
-fun ThemeSettingsScreen(modifier: Modifier = Modifier, padding: PaddingValues = PaddingValues(), onBack: () -> Unit) {
+fun ThemeSettingsScreen(
+    modifier: Modifier = Modifier,
+    padding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit
+) {
     ThemeSettings(modifier, padding, onBack)
 }
 
 @Composable
-fun DownloadSettingsScreen(modifier: Modifier = Modifier, padding: PaddingValues = PaddingValues(), onBack: () -> Unit) {
+fun DownloadSettingsScreen(
+    modifier: Modifier = Modifier,
+    padding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit
+) {
     DownloadSettings(modifier, padding, onBack)
 }
 
@@ -172,9 +180,15 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
     )
 
     SettingsPageScaffold(stringResource(R.string.settings), modifier, padding, null) {
-        SegmentedColumn(content = listOf(
+        SegmentedColumn(
+            content = listOf(
             {
-                SwitchItem(Icons.Filled.SystemUpdate, stringResource(R.string.auto_check_updates), stringResource(R.string.auto_check_updates_summary), settings.autoCheckUpdates) {
+                SwitchItem(
+                    Icons.Filled.SystemUpdate,
+                    stringResource(R.string.auto_check_updates),
+                    stringResource(R.string.auto_check_updates_summary),
+                    settings.autoCheckUpdates
+                ) {
                     AppSettingsState.update(context) { it.copy(autoCheckUpdates = !it.autoCheckUpdates) }
                 }
             },
@@ -190,7 +204,10 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
                         enabled = !checking && !downloading
                     ) {
                         if (checking) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
                         } else if (downloading) {
                             Text("$downloadProgress%")
                         } else {
@@ -201,23 +218,44 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
             }
         ))
 
-        SegmentedColumn(content = listOf(
-            { ArrowItem(Icons.Filled.Palette, stringResource(R.string.theme), stringResource(R.string.theme_summary)) { open(SettingsPage.THEME) } },
+        SegmentedColumn(
+            content = listOf(
             {
-                val languageIndex = languages.indexOfFirst { it.second == currentLanguageTag(context) }.coerceAtLeast(0)
+                ArrowItem(
+                    Icons.Filled.Palette,
+                    stringResource(R.string.theme),
+                    stringResource(R.string.theme_summary)
+                ) { open(SettingsPage.THEME) }
+            },
+            {
+                val languageIndex =
+                    languages.indexOfFirst { it.second == currentLanguageTag(context) }
+                        .coerceAtLeast(0)
                 SegmentedDropdownItem(
                     icon = Icons.Filled.Language,
                     title = stringResource(R.string.language),
                     summary = stringResource(R.string.language),
                     items = languages.map { it.first },
                     selectedIndex = languageIndex,
-                    onItemSelected = { index -> setAppLanguage(context, languages[index].second) }
+                    onItemSelected = { index ->
+                        setAppLanguage(
+                            context,
+                            languages[index].second
+                        )
+                    }
                 )
             }
         ))
 
-        SegmentedColumn(content = listOf(
-            { ArrowItem(Icons.Filled.CloudDownload, stringResource(R.string.download_settings), stringResource(R.string.download_settings_summary)) { open(SettingsPage.DOWNLOAD) } }
+        SegmentedColumn(
+            content = listOf(
+            {
+                ArrowItem(
+                    Icons.Filled.CloudDownload,
+                    stringResource(R.string.download_settings),
+                    stringResource(R.string.download_settings_summary)
+                ) { open(SettingsPage.DOWNLOAD) }
+            }
         ))
     }
 }
@@ -246,9 +284,31 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
             contentPadding = PaddingValues(horizontal = 0.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item { ColorSeedButton(0, settings.keyColor == 0, isDark, settings.paletteStyle, settings.colorSpec) { AppSettingsState.update(context) { it.copy(keyColor = 0) } } }
-            items(listOf(0xFFF44336.toInt(), 0xFF2196F3.toInt(), 0xFF009688.toInt(), 0xFFFF9800.toInt(), 0xFF9C27B0.toInt())) { color ->
-                ColorSeedButton(color, settings.keyColor == color, isDark, settings.paletteStyle, settings.colorSpec) { AppSettingsState.update(context) { it.copy(keyColor = color) } }
+            item {
+                ColorSeedButton(
+                    0,
+                    settings.keyColor == 0,
+                    isDark,
+                    settings.paletteStyle,
+                    settings.colorSpec
+                ) { AppSettingsState.update(context) { it.copy(keyColor = 0) } }
+            }
+            items(
+                listOf(
+                    0xFFF44336.toInt(),
+                    0xFF2196F3.toInt(),
+                    0xFF009688.toInt(),
+                    0xFFFF9800.toInt(),
+                    0xFF9C27B0.toInt()
+                )
+            ) { color ->
+                ColorSeedButton(
+                    color,
+                    settings.keyColor == color,
+                    isDark,
+                    settings.paletteStyle,
+                    settings.colorSpec
+                ) { AppSettingsState.update(context) { it.copy(keyColor = color) } }
             }
         }
 
@@ -257,9 +317,21 @@ private fun ThemeSettings(modifier: Modifier, padding: PaddingValues, onBack: ()
             horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
         ) {
             listOf(
-                Triple(Icons.Filled.Brightness4, stringResource(R.string.theme_system), ThemeMode.SYSTEM),
-                Triple(Icons.Filled.Brightness7, stringResource(R.string.theme_light), ThemeMode.LIGHT),
-                Triple(Icons.Filled.Brightness3, stringResource(R.string.theme_dark), ThemeMode.DARK)
+                Triple(
+                    Icons.Filled.Brightness4,
+                    stringResource(R.string.theme_system),
+                    ThemeMode.SYSTEM
+                ),
+                Triple(
+                    Icons.Filled.Brightness7,
+                    stringResource(R.string.theme_light),
+                    ThemeMode.LIGHT
+                ),
+                Triple(
+                    Icons.Filled.Brightness3,
+                    stringResource(R.string.theme_dark),
+                    ThemeMode.DARK
+                )
             ).forEachIndexed { index, (icon, label, mode) ->
                 ExpressiveToggleButton(
                     checked = settings.theme == mode,
@@ -369,20 +441,26 @@ private fun ColorSeedButton(
                         .border(2.dp, scheme.primary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(scheme.primary)) {
-                        Icon(Icons.Filled.Palette, null, tint = scheme.onPrimary, modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(16.dp))
+                    Box(
+                        Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(scheme.primary)
+                    ) {
+                        Icon(
+                            Icons.Filled.Palette, null, tint = scheme.onPrimary, modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(16.dp)
+                        )
                     }
                 }
             }
             AnimatedVisibility(visible = !selected) {
-                Box(Modifier
-                    .size(20.dp)
-                    .background(scheme.primary, CircleShape))
+                Box(
+                    Modifier
+                        .size(20.dp)
+                        .background(scheme.primary, CircleShape)
+                )
             }
         }
     }
@@ -448,7 +526,12 @@ private fun ThemePreview(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Filled.Brightness4, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Filled.Brightness4,
+                        contentDescription = null,
+                        tint = scheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
                 }
             }
         }
@@ -460,7 +543,12 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
     val context = LocalContext.current
     val settings by AppSettingsState.settings.collectAsState()
     SettingsPageScaffold(stringResource(R.string.download_settings), modifier, padding, onBack) {
-        Text(stringResource(R.string.download_channel_section), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        Text(
+            stringResource(R.string.download_channel_section),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
+        )
         SegmentedColumn(content = listOf({
             SegmentedDropdownItem(
                 title = stringResource(R.string.download_channel_title),
@@ -474,7 +562,12 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
                 }
             )
         }))
-        Text(stringResource(R.string.download_performance_section), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        Text(
+            stringResource(R.string.download_performance_section),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
+        )
         SegmentedColumn(content = listOf({
             val sliderState = rememberSliderState(
                 value = settings.concurrency.toFloat(),
@@ -506,7 +599,9 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
                             state = sliderState,
                             onValueChangeFinished = {
                                 AppSettingsState.update(context) {
-                                    it.copy(concurrency = sliderState.value.roundToInt().coerceIn(2, 24))
+                                    it.copy(
+                                        concurrency = sliderState.value.roundToInt().coerceIn(2, 24)
+                                    )
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -516,13 +611,21 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
                 verticalAlignment = Alignment.CenterVertically
             )
         }))
-        Text(stringResource(R.string.icon_types_section), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        Text(
+            stringResource(R.string.icon_types_section),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
+        )
         SegmentedColumn(
             content = DOWNLOAD_VARIANTS.map { variant ->
                 {
                     SwitchItem(
                         title = variant.uppercase(),
-                        summary = stringResource(R.string.download_variant_summary, variant.uppercase()),
+                        summary = stringResource(
+                            R.string.download_variant_summary,
+                            variant.uppercase()
+                        ),
                         checked = variant in settings.variants,
                         onClick = {
                             AppSettingsState.update(context) { current ->
@@ -531,7 +634,8 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
                                 } else {
                                     current.variants + variant
                                 }
-                                current.copy(variants = next.takeIf { it.isNotEmpty() } ?: current.variants)
+                                current.copy(variants = next.takeIf { it.isNotEmpty() }
+                                    ?: current.variants)
                             }
                         }
                     )
@@ -542,12 +646,27 @@ private fun DownloadSettings(modifier: Modifier, padding: PaddingValues, onBack:
 }
 
 @Composable
-private fun SettingsPageScaffold(title: String, modifier: Modifier, padding: PaddingValues, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
+private fun SettingsPageScaffold(
+    title: String,
+    modifier: Modifier,
+    padding: PaddingValues,
+    onBack: (() -> Unit)?,
+    content: @Composable () -> Unit
+) {
     MainScreenScaffold(
         modifier = modifier,
         title = title,
         contentPadding = padding,
-        navigationIcon = onBack?.let { callback -> { IconButton(onClick = callback) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } } } ?: {}
+        navigationIcon = onBack?.let { callback ->
+            {
+                IconButton(onClick = callback) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        stringResource(R.string.back)
+                    )
+                }
+            }
+        } ?: {}
     ) { contentModifier ->
         Column(
             contentModifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -599,15 +718,36 @@ private fun ArrowItem(icon: ImageVector, title: String, summary: String, onClick
 
 
 @Composable
-private fun SwitchItem(icon: ImageVector? = null, title: String, summary: String, checked: Boolean, onClick: () -> Unit) {
+private fun SwitchItem(
+    icon: ImageVector? = null,
+    title: String,
+    summary: String,
+    checked: Boolean,
+    onClick: () -> Unit
+) {
     SegmentedListItem(
         shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
         colors = settingsItemColors(),
         content = { Text(title) },
         supportingContent = { Text(summary) },
         onClick = onClick,
-        leadingContent = icon?.let { { Box(contentAlignment = Alignment.Center) { Icon(it, title) } } },
-        trailingContent = { Box(contentAlignment = Alignment.Center) { Switch(checked = checked, onCheckedChange = { onClick() }) } },
+        leadingContent = icon?.let {
+            {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        it,
+                        title
+                    )
+                }
+            }
+        },
+        trailingContent = {
+            Box(contentAlignment = Alignment.Center) {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = { onClick() })
+            }
+        },
         verticalAlignment = Alignment.CenterVertically
     )
 }
@@ -618,8 +758,9 @@ private fun currentLanguageTag(context: android.content.Context): String =
 private data class UpdateCheckResult(val message: String, val apkUrl: String? = null)
 
 private fun checkForUpdate(context: android.content.Context): UpdateCheckResult = runCatching {
-    val connection = URL("https://api.github.com/repos/ColorIcons/ColorOSIconsPatch/releases/latest")
-        .openConnection() as HttpURLConnection
+    val connection =
+        URL("https://api.github.com/repos/ColorIcons/ColorOSIconsPatch/releases/latest")
+            .openConnection() as HttpURLConnection
     connection.connectTimeout = 8_000
     connection.readTimeout = 8_000
     try {
@@ -640,10 +781,20 @@ private fun checkForUpdate(context: android.content.Context): UpdateCheckResult 
                     UpdateCheckResult(context.getString(R.string.update_up_to_date))
                 }
             }
+
             else -> error("HTTP ${connection.responseCode}")
         }
-    } finally { connection.disconnect() }
-}.getOrElse { UpdateCheckResult(context.getString(R.string.update_check_failed, it.message ?: context.getString(R.string.network_unavailable))) }
+    } finally {
+        connection.disconnect()
+    }
+}.getOrElse {
+    UpdateCheckResult(
+        context.getString(
+            R.string.update_check_failed,
+            it.message ?: context.getString(R.string.network_unavailable)
+        )
+    )
+}
 
 @SuppressLint("UseKt")
 private suspend fun downloadUpdate(
@@ -660,13 +811,18 @@ private suspend fun downloadUpdate(
         .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
         .setAllowedOverMetered(true)
         .setAllowedOverRoaming(true)
-        .setDestinationInExternalFilesDir(context, android.os.Environment.DIRECTORY_DOWNLOADS, filename)
+        .setDestinationInExternalFilesDir(
+            context,
+            android.os.Environment.DIRECTORY_DOWNLOADS,
+            filename
+        )
     val id = manager.enqueue(request)
     UpdateDownloadCleanup.rememberDownload(context, id, filename)
     var finished = false
     var downloadedUri: Uri? = null
     while (!finished) {
-        val query = manager.query(android.app.DownloadManager.Query().setFilterById(id)) ?: return@withContext null
+        val query = manager.query(android.app.DownloadManager.Query().setFilterById(id))
+            ?: return@withContext null
         val state = query.use { cursor ->
             if (!cursor.moveToFirst()) return@withContext null
             Triple(
@@ -681,6 +837,7 @@ private suspend fun downloadUpdate(
                 downloadedUri = manager.getUriForDownloadedFile(id)
                 finished = true
             }
+
             android.app.DownloadManager.STATUS_FAILED -> finished = true
             else -> delay(500.milliseconds)
         }

@@ -1,16 +1,16 @@
 package com.immortal521.colorosiconspatch.data
 
+import android.app.LocaleManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.LocaleList
-import android.app.LocaleManager
+import androidx.core.content.edit
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.materialkolor.PaletteStyle
-import com.materialkolor.dynamiccolor.ColorSpec
-import androidx.core.content.edit
 
 private const val PREFS = "app_settings"
 private const val KEY_CHANNEL = "download_channel"
@@ -61,7 +61,14 @@ fun loadAppSettings(context: Context): AppSettings {
         channel = prefs.getString(KEY_CHANNEL, CHANNEL_GITHUB) ?: CHANNEL_GITHUB,
         concurrency = prefs.getInt(KEY_CONCURRENCY, 8).coerceIn(2, 24),
         variants = variants,
-        theme = runCatching { ThemeMode.valueOf(prefs.getString(KEY_THEME, ThemeMode.SYSTEM.name)!!) }
+        theme = runCatching {
+            ThemeMode.valueOf(
+                prefs.getString(
+                    KEY_THEME,
+                    ThemeMode.SYSTEM.name
+                )!!
+            )
+        }
             .getOrDefault(ThemeMode.SYSTEM),
         dynamicColor = prefs.getBoolean(KEY_DYNAMIC, true),
         keyColor = prefs.getInt(KEY_KEY_COLOR, 0),
@@ -69,7 +76,12 @@ fun loadAppSettings(context: Context): AppSettings {
             PaletteStyle.valueOf(prefs.getString(KEY_PALETTE_STYLE, PaletteStyle.TonalSpot.name)!!)
         }.getOrDefault(PaletteStyle.TonalSpot),
         colorSpec = runCatching {
-            ColorSpec.SpecVersion.valueOf(prefs.getString(KEY_COLOR_SPEC, ColorSpec.SpecVersion.SPEC_2025.name)!!)
+            ColorSpec.SpecVersion.valueOf(
+                prefs.getString(
+                    KEY_COLOR_SPEC,
+                    ColorSpec.SpecVersion.SPEC_2025.name
+                )!!
+            )
         }.getOrDefault(ColorSpec.SpecVersion.SPEC_2025),
         predictiveBack = prefs.getBoolean(KEY_PREDICTIVE_BACK, true),
         autoCheckUpdates = prefs.getBoolean(KEY_AUTO_CHECK_UPDATE, true)
@@ -95,7 +107,10 @@ object AppSettingsState {
     private val _settings = MutableStateFlow(AppSettings())
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
-    fun load(context: Context) { _settings.value = loadAppSettings(context) }
+    fun load(context: Context) {
+        _settings.value = loadAppSettings(context)
+    }
+
     fun update(context: Context, transform: (AppSettings) -> AppSettings) {
         val next = transform(_settings.value)
         saveAppSettings(context, next)

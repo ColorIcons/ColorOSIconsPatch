@@ -2,11 +2,11 @@ package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.content.edit
 
 private const val APP_PACKAGE = "com.immortal521.colorosiconspatch"
 private const val REFRESH_ACTION = "$APP_PACKAGE.action.REFRESH_LAUNCHER_ICONS"

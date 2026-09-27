@@ -17,9 +17,9 @@ import com.materialkolor.rememberDynamicColorScheme
 
 private val PaletteStyle.supportsSpec2025: Boolean
     get() = this == PaletteStyle.TonalSpot ||
-        this == PaletteStyle.Neutral ||
-        this == PaletteStyle.Vibrant ||
-        this == PaletteStyle.Expressive
+            this == PaletteStyle.Neutral ||
+            this == PaletteStyle.Vibrant ||
+            this == PaletteStyle.Expressive
 
 fun ColorSpec.SpecVersion.effectiveFor(style: PaletteStyle): ColorSpec.SpecVersion =
     if (this == ColorSpec.SpecVersion.SPEC_2025 && !style.supportsSpec2025) {

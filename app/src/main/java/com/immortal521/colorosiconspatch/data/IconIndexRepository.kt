@@ -4,16 +4,16 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import org.json.JSONObject
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.json.JSONObject
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 private const val DEFAULT_INDEX_URL = GITHUB_INDEX_URL
 private const val INDEX_CACHE = "icon-index.json"
@@ -82,7 +82,10 @@ fun loadIconIndex(
         }
     } catch (_: Exception) {
         if (!cache.isFile) {
-            IconIndexLoadResult(emptyMap(), error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed))
+            IconIndexLoadResult(
+                emptyMap(),
+                error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed)
+            )
         } else {
             try {
                 parseIndex(cache.readText(), enabledVariants).let { (requiredFiles, packages) ->
@@ -93,7 +96,10 @@ fun loadIconIndex(
                     )
                 }
             } catch (_: Exception) {
-                IconIndexLoadResult(emptyMap(), error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed))
+                IconIndexLoadResult(
+                    emptyMap(),
+                    error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed)
+                )
             }
         }
     }
@@ -138,7 +144,10 @@ private fun parseIndex(
                     }
                 }
             }
-            if (files.isNotEmpty()) put(packageName, IconPackage(packageName, files.distinctBy { it.name }))
+            if (files.isNotEmpty()) put(
+                packageName,
+                IconPackage(packageName, files.distinctBy { it.name })
+            )
         }
     }
     return requiredFiles to packageMap
@@ -245,14 +254,24 @@ suspend fun syncIconResources(
             for (update in updates) {
                 val temporary = File.createTempFile("icon-", ".png", context.cacheDir)
                 try {
-                    onProgress(IconSyncProgress(completedApps, totalApps, packageName, update.file.name))
+                    onProgress(
+                        IconSyncProgress(
+                            completedApps,
+                            totalApps,
+                            packageName,
+                            update.file.name
+                        )
+                    )
                     downloadFile(
                         update.file.path,
                         temporary,
                         loadAppSettings(context).indexUrl.removeSuffix("/index.json")
                     )
                     check(sha256(temporary) == update.file.sha256) {
-                        context.getString(com.immortal521.colorosiconspatch.R.string.icon_checksum_failed, update.file.path)
+                        context.getString(
+                            com.immortal521.colorosiconspatch.R.string.icon_checksum_failed,
+                            update.file.path
+                        )
                     }
                     installRootFile(context, temporary, update.target)
                     downloadedForApp++
@@ -292,8 +311,8 @@ private fun readLocalChecksums(): Map<String, String> {
 
 private fun installRootFile(context: Context, source: File, target: String) {
     val command = "mkdir -p ${shellQuote(target.substringBeforeLast('/'))} && " +
-        "cp ${shellQuote(source.absolutePath)} ${shellQuote(target)} && " +
-        "chmod 0644 ${shellQuote(target)}"
+            "cp ${shellQuote(source.absolutePath)} ${shellQuote(target)} && " +
+            "chmod 0644 ${shellQuote(target)}"
     check(runRoot(command).first == 0) { context.getString(com.immortal521.colorosiconspatch.R.string.write_icons_failed) }
 }
 

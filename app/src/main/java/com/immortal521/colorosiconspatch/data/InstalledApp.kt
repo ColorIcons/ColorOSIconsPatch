@@ -1,9 +1,9 @@
 package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
-import java.io.File
-import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+import java.io.File
 
 
 fun canReadInstalledApps(context: Context): Boolean =
@@ -40,12 +40,15 @@ fun loadInstalledApps(
             InstalledApp(
                 label = applicationInfo.loadLabel(packageManager).toString(),
                 packageName = applicationInfo.packageName,
-                installTime = packageManager.getPackageInfo(applicationInfo.packageName, 0).firstInstallTime,
+                installTime = packageManager.getPackageInfo(
+                    applicationInfo.packageName,
+                    0
+                ).firstInstallTime,
                 size = File(applicationInfo.sourceDir).length(),
                 icon = applicationInfo.loadIcon(packageManager).toBitmap().asImageBitmap(),
                 isAdapted = applicationInfo.packageName in adaptedPackages,
                 isSystem = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0 ||
-                    applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0,
+                        applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0,
                 userId = applicationInfo.uid / 100000
             )
         }

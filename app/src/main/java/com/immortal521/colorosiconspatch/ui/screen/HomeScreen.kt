@@ -79,8 +79,10 @@ fun HomeScreen(
     } else {
         CheckStatus.FAILED
     }
-    val androidVersion = stringResource(R.string.android_version, Build.VERSION.RELEASE, Build.VERSION.SDK_INT)
-    val securityPatch = Build.VERSION.SECURITY_PATCH.ifBlank { stringResource(R.string.unknown_value) }
+    val androidVersion =
+        stringResource(R.string.android_version, Build.VERSION.RELEASE, Build.VERSION.SDK_INT)
+    val securityPatch =
+        Build.VERSION.SECURITY_PATCH.ifBlank { stringResource(R.string.unknown_value) }
     val deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
     val kernelVersion = System.getProperty("os.version") ?: stringResource(R.string.unknown_value)
 
@@ -90,7 +92,10 @@ fun HomeScreen(
         modifier = modifier,
         actions = {
             IconButton(onClick = { showRefreshConfirmation = true }) {
-                Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.refresh_launcher))
+                Icon(
+                    Icons.Rounded.Refresh,
+                    contentDescription = stringResource(R.string.refresh_launcher)
+                )
             }
         }
     ) { contentModifier ->
@@ -165,11 +170,11 @@ private fun RootStatusCard(
     }
     val contentColor = MaterialTheme.colorScheme.contentColorFor(containerColor)
     val checking = root == CheckStatus.UNKNOWN ||
-        module == CheckStatus.UNKNOWN ||
-        xposed == CheckStatus.UNKNOWN ||
-        root == CheckStatus.CHECKING ||
-        module == CheckStatus.CHECKING ||
-        xposed == CheckStatus.CHECKING
+            module == CheckStatus.UNKNOWN ||
+            xposed == CheckStatus.UNKNOWN ||
+            root == CheckStatus.CHECKING ||
+            module == CheckStatus.CHECKING ||
+            xposed == CheckStatus.CHECKING
     val icon = when {
         ready -> Icons.Rounded.CheckCircle
         checking -> Icons.Rounded.Warning
@@ -194,7 +199,9 @@ private fun RootStatusCard(
         shape = MaterialTheme.shapes.large
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -207,7 +214,11 @@ private fun RootStatusCard(
             ) {
                 Text(title, style = MaterialTheme.typography.titleMediumEmphasized)
                 Text(
-                    stringResource(R.string.root_manager_version, implementation.displayName, rootVersionText),
+                    stringResource(
+                        R.string.root_manager_version,
+                        implementation.displayName,
+                        rootVersionText
+                    ),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
@@ -249,8 +260,14 @@ private fun IconSyncCard(
         ) {
             when {
                 syncing && progress != null -> {
-                    Text(stringResource(R.string.updating_icons), style = MaterialTheme.typography.titleMediumEmphasized)
-                    Text(progress.currentApp ?: stringResource(R.string.preparing), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        stringResource(R.string.updating_icons),
+                        style = MaterialTheme.typography.titleMediumEmphasized
+                    )
+                    Text(
+                        progress.currentApp ?: stringResource(R.string.preparing),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                     progress.currentFile?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall)
                     }
@@ -263,15 +280,28 @@ private fun IconSyncCard(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        stringResource(R.string.app_progress, progress.completedApps, progress.totalApps),
+                        stringResource(
+                            R.string.app_progress,
+                            progress.completedApps,
+                            progress.totalApps
+                        ),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
+
                 plan == null -> Text(stringResource(R.string.checking_icon_changes))
                 else -> {
-                    Text(stringResource(R.string.icon_changes_found, plan.affectedApps), style = MaterialTheme.typography.titleMediumEmphasized)
                     Text(
-                        stringResource(R.string.files_to_update, plan.updates.size, plan.staleFiles.size, formatBytes(plan.totalBytes)),
+                        stringResource(R.string.icon_changes_found, plan.affectedApps),
+                        style = MaterialTheme.typography.titleMediumEmphasized
+                    )
+                    Text(
+                        stringResource(
+                            R.string.files_to_update,
+                            plan.updates.size,
+                            plan.staleFiles.size,
+                            formatBytes(plan.totalBytes)
+                        ),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Button(onClick = onSync, enabled = !syncing) {
@@ -280,7 +310,11 @@ private fun IconSyncCard(
                 }
             }
             error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }
@@ -304,10 +338,26 @@ private fun SystemInfoCard(
             modifier = Modifier.padding(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            InfoCardItem(Icons.Filled.Android, stringResource(R.string.android_label), androidVersion)
-            InfoCardItem(Icons.Filled.Security, stringResource(R.string.security_patch), securityPatch)
-            InfoCardItem(Icons.Filled.Smartphone, stringResource(R.string.device_model), deviceModel)
-            InfoCardItem(Icons.Filled.DeveloperBoard, stringResource(R.string.kernel_label), kernelVersion)
+            InfoCardItem(
+                Icons.Filled.Android,
+                stringResource(R.string.android_label),
+                androidVersion
+            )
+            InfoCardItem(
+                Icons.Filled.Security,
+                stringResource(R.string.security_patch),
+                securityPatch
+            )
+            InfoCardItem(
+                Icons.Filled.Smartphone,
+                stringResource(R.string.device_model),
+                deviceModel
+            )
+            InfoCardItem(
+                Icons.Filled.DeveloperBoard,
+                stringResource(R.string.kernel_label),
+                kernelVersion
+            )
         }
     }
 }

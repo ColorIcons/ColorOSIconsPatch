@@ -25,8 +25,14 @@ object UpdateDownloadCleanup {
             context.getSystemService(DownloadManager::class.java).remove(downloadId)
         }
         val filename = prefs.getString(KEY_FILENAME, DEFAULT_FILENAME) ?: DEFAULT_FILENAME
-        File(context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS), filename).delete()
-        File(context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS), DEFAULT_FILENAME).delete()
+        File(
+            context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
+            filename
+        ).delete()
+        File(
+            context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
+            DEFAULT_FILENAME
+        ).delete()
         prefs.edit { clear() }
     }
 }

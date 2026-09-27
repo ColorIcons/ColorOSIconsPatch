@@ -2,14 +2,14 @@ package com.immortal521.colorosiconspatch.ui.screen
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -37,8 +37,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.ModuleOperationStatus
@@ -74,8 +74,9 @@ fun WelcomeScreen(
     val step = when {
         !introComplete -> WelcomeStep.INTRO
         rootStatus == CheckStatus.PASSED &&
-            moduleStatus == CheckStatus.PASSED &&
-            xposedStatus == CheckStatus.PASSED && rebootReady -> WelcomeStep.COMPLETE
+                moduleStatus == CheckStatus.PASSED &&
+                xposedStatus == CheckStatus.PASSED && rebootReady -> WelcomeStep.COMPLETE
+
         rootStatus == CheckStatus.PASSED && moduleStatus == CheckStatus.PASSED && xposedStatus == CheckStatus.PASSED -> WelcomeStep.REBOOT
         rootStatus == CheckStatus.PASSED && moduleStatus == CheckStatus.PASSED -> WelcomeStep.XPOSED
         rootStatus == CheckStatus.PASSED -> WelcomeStep.MODULE
@@ -94,53 +95,53 @@ fun WelcomeScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-        AnimatedVisibility(
-            visibleState = entered,
-            enter = fadeIn(tween(500)) +
-                slideInVertically(tween(500)) { it / 3 }
-        ) {
-            Icon(
-                imageVector = when (step) {
-                    WelcomeStep.INTRO -> Icons.Filled.Palette
-                    WelcomeStep.ROOT -> Icons.Filled.Security
-                    WelcomeStep.MODULE -> Icons.Filled.Extension
-                    WelcomeStep.XPOSED -> Icons.Filled.Security
-                    WelcomeStep.REBOOT -> Icons.Filled.Security
-                    WelcomeStep.COMPLETE -> Icons.Filled.CheckCircle
+            AnimatedVisibility(
+                visibleState = entered,
+                enter = fadeIn(tween(500)) +
+                        slideInVertically(tween(500)) { it / 3 }
+            ) {
+                Icon(
+                    imageVector = when (step) {
+                        WelcomeStep.INTRO -> Icons.Filled.Palette
+                        WelcomeStep.ROOT -> Icons.Filled.Security
+                        WelcomeStep.MODULE -> Icons.Filled.Extension
+                        WelcomeStep.XPOSED -> Icons.Filled.Security
+                        WelcomeStep.REBOOT -> Icons.Filled.Security
+                        WelcomeStep.COMPLETE -> Icons.Filled.CheckCircle
+                    },
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(88.dp)
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+            AnimatedContent(
+                targetState = step,
+                transitionSpec = {
+                    (slideInHorizontally(tween(350)) { it / 3 } + fadeIn(tween(350))) togetherWith
+                            (slideOutHorizontally(tween(250)) { -it / 4 } + fadeOut(tween(250)))
                 },
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(88.dp)
-            )
-        }
-        Spacer(Modifier.height(24.dp))
-        AnimatedContent(
-            targetState = step,
-            transitionSpec = {
-                (slideInHorizontally(tween(350)) { it / 3 } + fadeIn(tween(350))) togetherWith
-                    (slideOutHorizontally(tween(250)) { -it / 4 } + fadeOut(tween(250)))
-            },
-            label = "welcome_step"
-        ) { currentStep ->
-            StepContent(
-                step = currentStep,
-                rootStatus = rootStatus,
-                moduleStatus = moduleStatus,
-                xposedStatus = xposedStatus,
-                onRequestRoot = onRequestRoot,
-                onInstallModule = onInstallModule,
-                moduleInstallStatus = moduleInstallStatus,
-                moduleInstallMessage = moduleInstallMessage,
-                onContinue = onContinue,
-                onCheckXposed = onCheckXposed,
-                onSkipXposed = onSkipXposed,
-                rebootReady = rebootReady,
-                onReboot = onReboot,
-                onStart = { introComplete = true }
-            )
+                label = "welcome_step"
+            ) { currentStep ->
+                StepContent(
+                    step = currentStep,
+                    rootStatus = rootStatus,
+                    moduleStatus = moduleStatus,
+                    xposedStatus = xposedStatus,
+                    onRequestRoot = onRequestRoot,
+                    onInstallModule = onInstallModule,
+                    moduleInstallStatus = moduleInstallStatus,
+                    moduleInstallMessage = moduleInstallMessage,
+                    onContinue = onContinue,
+                    onCheckXposed = onCheckXposed,
+                    onSkipXposed = onSkipXposed,
+                    rebootReady = rebootReady,
+                    onReboot = onReboot,
+                    onStart = { introComplete = true }
+                )
+            }
         }
     }
-}
 }
 
 @Composable
@@ -163,7 +164,10 @@ private fun StepContent(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         when (step) {
             WelcomeStep.INTRO -> {
-                Text(stringResource(R.string.welcome_title), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.welcome_title),
+                    style = MaterialTheme.typography.headlineSmall
+                )
                 Text(
                     stringResource(R.string.welcome_intro),
                     style = MaterialTheme.typography.bodyLarge,
@@ -173,8 +177,12 @@ private fun StepContent(
                     Text(stringResource(R.string.start_setup))
                 }
             }
+
             WelcomeStep.ROOT -> {
-                Text(stringResource(R.string.grant_root), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.grant_root),
+                    style = MaterialTheme.typography.headlineSmall
+                )
                 Text(
                     stringResource(R.string.root_required),
                     style = MaterialTheme.typography.bodyLarge,
@@ -187,8 +195,12 @@ private fun StepContent(
                     onClick = onRequestRoot
                 )
             }
+
             WelcomeStep.MODULE -> {
-                Text(stringResource(R.string.check_icon_module), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.check_icon_module),
+                    style = MaterialTheme.typography.headlineSmall
+                )
                 Text(
                     stringResource(R.string.check_module_summary),
                     style = MaterialTheme.typography.bodyLarge,
@@ -217,8 +229,12 @@ private fun StepContent(
                     )
                 }
             }
+
             WelcomeStep.XPOSED -> {
-                Text(stringResource(R.string.check_xposed), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.check_xposed),
+                    style = MaterialTheme.typography.headlineSmall
+                )
                 Text(
                     stringResource(R.string.xposed_instruction),
                     style = MaterialTheme.typography.bodyLarge,
@@ -236,10 +252,22 @@ private fun StepContent(
                     }
                 }
             }
+
             WelcomeStep.REBOOT -> {
-                Text(stringResource(R.string.reboot_required), style = MaterialTheme.typography.headlineSmall)
-                Text(stringResource(R.string.reboot_required_summary), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 12.dp))
-                Text(stringResource(if (rebootReady) R.string.reboot_detected else R.string.reboot_pending), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
+                Text(
+                    stringResource(R.string.reboot_required),
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    stringResource(R.string.reboot_required_summary),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+                Text(
+                    stringResource(if (rebootReady) R.string.reboot_detected else R.string.reboot_pending),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 24.dp)
+                )
                 if (rebootReady) {
                     Button(onClick = onContinue, modifier = Modifier.padding(top = 24.dp)) {
                         Text(stringResource(R.string.enter_main))
@@ -250,8 +278,12 @@ private fun StepContent(
                     }
                 }
             }
+
             WelcomeStep.COMPLETE -> {
-                Text(stringResource(R.string.setup_complete), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.setup_complete),
+                    style = MaterialTheme.typography.headlineSmall
+                )
                 Text(
                     stringResource(R.string.setup_complete_summary),
                     style = MaterialTheme.typography.bodyLarge,

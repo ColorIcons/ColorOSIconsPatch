@@ -23,24 +23,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.IconIndexLoadResult
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
 import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.InstalledApp
-import com.immortal521.colorosiconspatch.ui.screen.AppDetailScreen
 import com.immortal521.colorosiconspatch.data.PackageChangeReceiver
 import com.immortal521.colorosiconspatch.data.buildIconSyncPlan
-import com.immortal521.colorosiconspatch.data.loadIconIndex
 import com.immortal521.colorosiconspatch.data.canReadInstalledApps
+import com.immortal521.colorosiconspatch.data.loadIconIndex
 import com.immortal521.colorosiconspatch.data.loadInstalledApps
 import com.immortal521.colorosiconspatch.data.sendLauncherRefresh
 import com.immortal521.colorosiconspatch.data.syncIconResources
 import com.immortal521.colorosiconspatch.ui.navigation.MainNavigationBar
 import com.immortal521.colorosiconspatch.ui.onboarding.InitializationFlow
+import com.immortal521.colorosiconspatch.ui.screen.AppDetailScreen
 import com.immortal521.colorosiconspatch.ui.screen.AppsScreen
 import com.immortal521.colorosiconspatch.ui.screen.DownloadSettingsScreen
 import com.immortal521.colorosiconspatch.ui.screen.HomeScreen
@@ -98,12 +98,12 @@ private fun MainContent() {
         entry<AppRoute.Main>(swipeDismiss = NavSwipeDirection.LeftToRight) {
             MainPagerScreen(
                 onOpenSettingsPage = { page ->
-                when (page) {
-                    SettingsPage.THEME -> backStack.add(AppRoute.ThemeSettings)
-                    SettingsPage.DOWNLOAD -> backStack.add(AppRoute.DownloadSettings)
-                    SettingsPage.ROOT -> Unit
-                }
-            },
+                    when (page) {
+                        SettingsPage.THEME -> backStack.add(AppRoute.ThemeSettings)
+                        SettingsPage.DOWNLOAD -> backStack.add(AppRoute.DownloadSettings)
+                        SettingsPage.ROOT -> Unit
+                    }
+                },
                 onOpenApp = { app -> backStack.add(AppRoute.AppDetail(app.packageName)) }
             )
         }
@@ -128,6 +128,7 @@ private fun MainPagerScreen(
     onOpenApp: (InstalledApp) -> Unit
 ) {
     val context = LocalContext.current
+    val moduleUpdateFailedMessage = stringResource(R.string.module_update_failed)
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val pagerState = rememberPagerState(initialPage = selectedTab) { 3 }
     val pagerScope = rememberCoroutineScope()
@@ -238,10 +239,14 @@ private fun MainPagerScreen(
                                     }
                                 }
                                 syncPlan = withContext(Dispatchers.IO) {
-                                    buildIconSyncPlan(apps.mapTo(mutableSetOf()) { it.packageName }, index)
+                                    buildIconSyncPlan(
+                                        apps.mapTo(mutableSetOf()) { it.packageName },
+                                        index
+                                    )
                                 }
                             } catch (error: Exception) {
-                                syncError = error.message ?: context.getString(R.string.module_update_failed)
+                                syncError = error.message
+                                    ?: moduleUpdateFailedMessage
                             } finally {
                                 syncing = false
                             }

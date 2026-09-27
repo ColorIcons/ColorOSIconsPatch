@@ -1,6 +1,7 @@
 package com.immortal521.colorosiconspatch.ui.onboarding
 
 import android.content.Context
+import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,23 +11,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.edit
 import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.ModuleOperationStatus
 import com.immortal521.colorosiconspatch.data.checkModule
-import com.immortal521.colorosiconspatch.data.checkXposedActivation
 import com.immortal521.colorosiconspatch.data.checkRoot
-import com.immortal521.colorosiconspatch.data.prepareAndInstallModule
+import com.immortal521.colorosiconspatch.data.checkXposedActivation
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
+import com.immortal521.colorosiconspatch.data.prepareAndInstallModule
 import com.immortal521.colorosiconspatch.data.rebootDevice
 import com.immortal521.colorosiconspatch.ui.screen.WelcomeScreen
-import androidx.core.content.edit
-import android.provider.Settings
-import androidx.compose.runtime.mutableLongStateOf
 
 private const val PREFERENCES = "onboarding"
 private const val COMPLETED = "completed"
@@ -137,7 +137,6 @@ private fun InitializationScreen(
             rootStatus = environmentCheck.root,
             moduleStatus = environmentCheck.module,
             xposedStatus = environmentCheck.xposed,
-            rootImplementation = environmentCheck.implementation,
             onRequestRoot = ::requestRoot,
             onInstallModule = ::installModule,
             moduleInstallStatus = moduleInstallStatus,

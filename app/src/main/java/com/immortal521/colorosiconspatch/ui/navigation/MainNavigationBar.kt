@@ -27,9 +27,21 @@ fun MainNavigationBar(
     onTabSelected: (Int) -> Unit
 ) {
     val destinations = listOf(
-        NavigationDestination(stringResource(R.string.nav_home), Icons.Filled.Home, Icons.Outlined.Home),
-        NavigationDestination(stringResource(R.string.nav_apps), Icons.Filled.Apps, Icons.Outlined.Apps),
-        NavigationDestination(stringResource(R.string.nav_settings), Icons.Filled.Settings, Icons.Outlined.Settings)
+        NavigationDestination(
+            stringResource(R.string.nav_home),
+            Icons.Filled.Home,
+            Icons.Outlined.Home
+        ),
+        NavigationDestination(
+            stringResource(R.string.nav_apps),
+            Icons.Filled.Apps,
+            Icons.Outlined.Apps
+        ),
+        NavigationDestination(
+            stringResource(R.string.nav_settings),
+            Icons.Filled.Settings,
+            Icons.Outlined.Settings
+        )
     )
 
     NavigationBar {
