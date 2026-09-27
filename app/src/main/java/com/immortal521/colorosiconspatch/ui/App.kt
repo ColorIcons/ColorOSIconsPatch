@@ -35,6 +35,7 @@ import com.immortal521.colorosiconspatch.ui.screen.AppDetailScreen
 import com.immortal521.colorosiconspatch.data.PackageChangeReceiver
 import com.immortal521.colorosiconspatch.data.buildIconSyncPlan
 import com.immortal521.colorosiconspatch.data.loadIconIndex
+import com.immortal521.colorosiconspatch.data.canReadInstalledApps
 import com.immortal521.colorosiconspatch.data.loadInstalledApps
 import com.immortal521.colorosiconspatch.data.sendLauncherRefresh
 import com.immortal521.colorosiconspatch.data.syncIconResources
@@ -139,8 +140,16 @@ private fun MainPagerScreen(
     var syncing by remember { mutableStateOf(false) }
     var refreshingApps by remember { mutableStateOf(false) }
     val appSettings by AppSettingsState.settings.collectAsState()
+    val canReadApps = remember { canReadInstalledApps(context) }
 
     suspend fun refreshSyncPlan() {
+        if (!canReadApps) {
+            installedApps = emptyList()
+            iconIndex = null
+            syncPlan = null
+            iconIndexError = null
+            return
+        }
         val index = withContext(Dispatchers.IO) {
             loadIconIndex(context, appSettings.indexUrl, appSettings.variants)
         }
@@ -155,7 +164,7 @@ private fun MainPagerScreen(
         }
     }
 
-    LaunchedEffect(appSettings.channel, appSettings.variants) {
+    LaunchedEffect(canReadApps, appSettings.channel, appSettings.variants) {
         refreshSyncPlan()
     }
 
@@ -208,6 +217,7 @@ private fun MainPagerScreen(
         ) { page ->
             when (page) {
                 0 -> HomeScreen(
+                    canReadApps = canReadApps,
                     contentPadding = mainContentPadding,
                     plan = syncPlan,
                     progress = syncProgress,
@@ -245,7 +255,7 @@ private fun MainPagerScreen(
                     contentPadding = mainContentPadding,
                     isRefreshing = refreshingApps,
                     onRefresh = {
-                        if (!refreshingApps) {
+                        if (canReadApps && !refreshingApps) {
                             pagerScope.launch {
                                 refreshingApps = true
                                 try {

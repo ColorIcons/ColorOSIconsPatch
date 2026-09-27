@@ -7,6 +7,11 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 
 
+fun canReadInstalledApps(context: Context): Boolean =
+    context.packageManager.getInstalledApplications(
+        android.content.pm.PackageManager.ApplicationInfoFlags.of(0L)
+    ).size > 1
+
 data class InstalledApp(
     val label: String,
     val packageName: String,

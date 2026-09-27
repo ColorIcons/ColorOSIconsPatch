@@ -58,6 +58,7 @@ import com.immortal521.colorosiconspatch.data.checkRoot
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
+    canReadApps: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(),
     plan: IconSyncPlan? = null,
     progress: IconSyncProgress? = null,
@@ -108,7 +109,7 @@ fun HomeScreen(
                 rootVersion = environment.rootVersion
             )
 
-            if (plan == null || plan.totalChanges > 0 || syncing || error != null) {
+            if (canReadApps && (plan == null || plan.totalChanges > 0 || syncing || error != null)) {
                 IconSyncCard(
                     plan = plan,
                     progress = progress,
