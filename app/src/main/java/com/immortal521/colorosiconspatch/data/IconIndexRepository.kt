@@ -207,7 +207,7 @@ fun buildIconSyncPlan(
     val checksums = readLocalChecksums()
     val updates = buildList {
         for (requiredFile in index.requiredFiles) {
-            val target = "$PERSISTENT_ICONS/$requiredFile.name"
+            val target = "$PERSISTENT_ICONS/${requiredFile.name}"
             keep += target
             if (checksums[target] != requiredFile.sha256) {
                 add(IconFileUpdate(REQUIRED_PACKAGE, requiredFile, target, requiredFile.size))
@@ -215,7 +215,7 @@ fun buildIconSyncPlan(
         }
         for (packageName in installedPackages.intersect(index.packages.keys)) {
             for (iconFile in index.packages.getValue(packageName).files) {
-                val target = "$PERSISTENT_ICONS/$packageName/$iconFile.name"
+                val target = "$PERSISTENT_ICONS/$packageName/${iconFile.name}"
                 keep += target
                 if (checksums[target] != iconFile.sha256) {
                     add(IconFileUpdate(packageName, iconFile, target, iconFile.size))
