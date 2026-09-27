@@ -1,94 +1,83 @@
 package com.immortal521.colorosiconspatch.ui.screen
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Brightness4
+import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Brightness3
+import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Brightness7
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DesignServices
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.SystemUpdate
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Slider
-import androidx.compose.material3.rememberSliderState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.immortal521.colorosiconspatch.R
-import kotlin.math.roundToInt
 import com.immortal521.colorosiconspatch.data.AppSettingsState
 import com.immortal521.colorosiconspatch.data.CHANNEL_CLOUDFLARE
 import com.immortal521.colorosiconspatch.data.DOWNLOAD_VARIANTS
 import com.immortal521.colorosiconspatch.data.ThemeMode
+import com.immortal521.colorosiconspatch.data.UpdateDownloadCleanup
 import com.immortal521.colorosiconspatch.data.setAppLanguage
 import com.immortal521.colorosiconspatch.data.setPredictiveBackEnabled
-import com.immortal521.colorosiconspatch.data.UpdateDownloadCleanup
 import com.immortal521.colorosiconspatch.ui.component.material.ExpressiveToggleButton
 import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
 import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
@@ -103,8 +92,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.net.toUri
 
 enum class SettingsPage { ROOT, THEME, DOWNLOAD }
 
@@ -133,7 +122,7 @@ private fun SettingsRoot(modifier: Modifier, padding: PaddingValues, open: (Sett
     val settings by AppSettingsState.settings.collectAsState()
     var checking by remember { mutableStateOf(false) }
     var downloading by remember { mutableStateOf(false) }
-    var downloadProgress by remember { mutableStateOf(0) }
+    var downloadProgress by remember { mutableIntStateOf(0) }
     var result by remember { mutableStateOf<UpdateCheckResult?>(null) }
     val scope = rememberCoroutineScope()
     fun startUpdate() {
@@ -347,10 +336,11 @@ private fun ColorSeedButton(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val systemWallpaperScheme = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        if (isDark) androidx.compose.material3.dynamicDarkColorScheme(context)
-        else androidx.compose.material3.dynamicLightColorScheme(context)
-    } else MaterialTheme.colorScheme
+    val systemWallpaperScheme = if (isDark) {
+        androidx.compose.material3.dynamicDarkColorScheme(context)
+    } else {
+        androidx.compose.material3.dynamicLightColorScheme(context)
+    }
     val scheme = rememberDynamicColorScheme(
         seedColor = if (color == 0) systemWallpaperScheme.primary else Color(color),
         isDark = isDark,
@@ -374,16 +364,25 @@ private fun ColorSeedButton(
                 exit = fadeOut() + scaleOut(targetScale = 0.8f)
             ) {
                 Box(
-                    modifier = Modifier.size(56.dp).border(2.dp, scheme.primary, CircleShape),
+                    modifier = Modifier
+                        .size(56.dp)
+                        .border(2.dp, scheme.primary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(Modifier.size(24.dp).clip(CircleShape).background(scheme.primary)) {
-                        Icon(Icons.Filled.Palette, null, tint = scheme.onPrimary, modifier = Modifier.align(Alignment.Center).size(16.dp))
+                    Box(Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(scheme.primary)) {
+                        Icon(Icons.Filled.Palette, null, tint = scheme.onPrimary, modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(16.dp))
                     }
                 }
             }
             AnimatedVisibility(visible = !selected) {
-                Box(Modifier.size(20.dp).background(scheme.primary, CircleShape))
+                Box(Modifier
+                    .size(20.dp)
+                    .background(scheme.primary, CircleShape))
             }
         }
     }
@@ -651,7 +650,7 @@ private suspend fun downloadUpdate(
     context: android.content.Context,
     result: UpdateCheckResult,
     onProgress: (Int) -> Unit
-): Uri? = withContext<Uri?>(Dispatchers.IO) {
+): Uri? = withContext(Dispatchers.IO) {
     val url = result.apkUrl ?: return@withContext null
     val filename = "ColorOSIconsPatch-update.apk"
     val manager = context.getSystemService(android.app.DownloadManager::class.java)
