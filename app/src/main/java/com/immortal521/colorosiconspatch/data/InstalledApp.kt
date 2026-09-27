@@ -1,6 +1,5 @@
 package com.immortal521.colorosiconspatch.data
 
-import android.annotation.SuppressLint
 import android.content.Context
 import java.io.File
 import androidx.core.graphics.drawable.toBitmap
