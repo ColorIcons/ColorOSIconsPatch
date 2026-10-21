@@ -1,11 +1,11 @@
 package com.immortal521.colorosiconspatch
 
-import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication
 import com.immortal521.colorosiconspatch.data.ACTION_LSPOSED_LOG
 import com.immortal521.colorosiconspatch.data.EXTRA_LOG_LEVEL
 import com.immortal521.colorosiconspatch.data.EXTRA_LOG_MESSAGE
@@ -13,18 +13,15 @@ import com.immortal521.colorosiconspatch.data.LogCategory
 import com.immortal521.colorosiconspatch.data.LogLevel
 import com.immortal521.colorosiconspatch.data.LogStore
 import com.immortal521.colorosiconspatch.data.UpdateDownloadCleanup
-import com.immortal521.colorosiconspatch.data.XposedServiceState
 import com.immortal521.colorosiconspatch.data.loadAppSettings
 import com.immortal521.colorosiconspatch.data.setPredictiveBackEnabled
 import com.immortal521.colorosiconspatch.data.updateInstalledModuleMetadata
-import io.github.libxposed.service.XposedService
-import io.github.libxposed.service.XposedServiceHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-class ColorIconsPatchApplication : Application(), XposedServiceHelper.OnServiceListener {
+class ColorIconsPatchApplication : ModuleApplication() {
     override fun onCreate() {
         super.onCreate()
         setPredictiveBackEnabled(this, loadAppSettings(this).predictiveBack)
@@ -51,14 +48,5 @@ class ColorIconsPatchApplication : Application(), XposedServiceHelper.OnServiceL
             IntentFilter(ACTION_LSPOSED_LOG),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) RECEIVER_EXPORTED else 0
         )
-        XposedServiceHelper.registerListener(this)
-    }
-
-    override fun onServiceBind(service: XposedService) {
-        XposedServiceState.bind(service)
-    }
-
-    override fun onServiceDied(service: XposedService) {
-        XposedServiceState.unbind(service)
     }
 }

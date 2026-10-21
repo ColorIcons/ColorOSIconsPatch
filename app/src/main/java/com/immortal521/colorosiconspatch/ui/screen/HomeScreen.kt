@@ -51,9 +51,9 @@ import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
 import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.RootImplementation
-import com.immortal521.colorosiconspatch.data.XposedServiceState
 import com.immortal521.colorosiconspatch.data.checkRoot
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
+import com.immortal521.colorosiconspatch.data.xposedServiceAvailability
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -78,8 +78,8 @@ fun HomeScreen(
             environment = loadEnvironmentCheck(context)
         }
     }
-    val xposedService by XposedServiceState.service.collectAsState()
-    val xposedStatus = if (xposedService != null) {
+    val xposedAvailable by xposedServiceAvailability.collectAsState(false)
+    val xposedStatus = if (xposedAvailable) {
         CheckStatus.PASSED
     } else {
         CheckStatus.FAILED

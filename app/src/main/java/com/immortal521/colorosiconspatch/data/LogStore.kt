@@ -2,6 +2,7 @@ package com.immortal521.colorosiconspatch.data
 
 import android.content.Context
 import android.os.Build
+import com.highcapable.yukihookapi.YukiHook
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
@@ -148,7 +149,7 @@ object LogStore {
             appendLine("module_status=${check.module}")
             appendLine("susfs_status=${check.susfs}")
             appendLine("lsposed_status=${check.xposed}")
-            appendLine("lsposed_service_active=${XposedServiceState.active}")
+            appendLine("lsposed_service_active=${YukiHook.Status.isModuleActive}")
         }
     }
 

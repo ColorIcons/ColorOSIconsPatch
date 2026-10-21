@@ -7,12 +7,21 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
-import io.github.libxposed.api.XposedModule
-import io.github.libxposed.api.XposedModuleInterface
+import com.highcapable.yukihookapi.annotation.xposed.YukiHookLibXposedEntry
+import com.highcapable.yukihookapi.hook.factory.encase
+import com.highcapable.yukihookapi.hook.log.YLog
+import com.highcapable.yukihookapi.hook.xposed.YukiHookXposedModule
+import com.highcapable.yukihookapi.hook.xposed.bridge.event.registerFrameworkEvents
+import com.highcapable.yukihookapi.hook.xposed.bridge.event.v101.onModuleLoaded
 import java.lang.ref.WeakReference
 
+@YukiHookLibXposedEntry(
+    minApiVersion = 102,
+    targetApiVersion = 102,
+    scope = ["com.android.launcher", "com.android.launcher3"]
+)
 @SuppressLint("PrivateApi")
-class MainModule : XposedModule() {
+class MainModule : YukiHookXposedModule {
     companion object {
         private const val TAG = "ColorOSIconsPatch"
         private const val ACTION_REFRESH = "com.immortal521.colorosiconspatch.action.REFRESH_LAUNCHER_ICONS"
@@ -25,53 +34,54 @@ class MainModule : XposedModule() {
         private val hookedPackages = mutableSetOf<String>()
     }
 
-    override fun onModuleLoaded(param: XposedModuleInterface.ModuleLoadedParam) {
-        writeLog(Log.INFO, "Module loaded in ${param.processName}")
+    override fun onInit() {
+        registerFrameworkEvents {
+            onModuleLoaded { param ->
+                writeLog(Log.INFO, "Module loaded in ${param.processName}")
+            }
+        }
     }
 
-    override fun onPackageLoaded(param: XposedModuleInterface.PackageLoadedParam) {
-        val packageName = param.packageName
-        if (packageName != LAUNCHER_PACKAGE && packageName != LAUNCHER3_PACKAGE) return
-        synchronized(hookedPackages) {
-            if (!hookedPackages.add(packageName)) return
-        }
-
-        try {
-            val classLoader = param.defaultClassLoader
-            val applicationName = param.applicationInfo.className
-                ?.takeIf { it.isNotBlank() }
-                ?: "android.app.Application"
-            val applicationClass = classLoader.loadClass(applicationName)
-            val attachBaseContext = findAttachBaseContext(applicationClass)
-            hook(attachBaseContext).intercept { chain ->
-                val result = chain.proceed()
-                val context = chain.thisObject as? Context
-                if (context != null) {
-                    launcherRef = WeakReference(context)
-                    registerReceiver(context)
-                    writeLog(Log.INFO, "Launcher application captured: $packageName")
-                }
-                result
+    override fun onHook() = encase {
+        loadApp(LAUNCHER_PACKAGE, LAUNCHER3_PACKAGE) {
+            val targetPackage = packageName
+            synchronized(hookedPackages) {
+                if (!hookedPackages.add(targetPackage)) return@loadApp
             }
 
-            val launcherClassName = when (packageName) {
-                LAUNCHER3_PACKAGE -> "com.android.launcher3.Launcher"
-                else -> "com.android.launcher.Launcher"
-            }
-            val launcherClass = classLoader.loadClass(launcherClassName)
-            val onCreate = launcherClass.getDeclaredMethod("onCreate", Bundle::class.java)
-            hook(onCreate).intercept { chain ->
-                val result = chain.proceed()
-                val context = chain.thisObject as? Context
-                if (context != null) {
-                    launcherRef = WeakReference(context)
-                    registerReceiver(context)
+            try {
+                val classLoader = requireNotNull(hostClassLoader)
+                val applicationName = appInfo.className
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "android.app.Application"
+                val applicationClass = classLoader.loadClass(applicationName)
+                findAttachBaseContext(applicationClass).intercept {
+                    val result = proceed()
+                    instanceOrNull<Context>()?.let { context ->
+                        launcherRef = WeakReference(context)
+                        registerReceiver(context)
+                        writeLog(Log.INFO, "Launcher application captured: $targetPackage")
+                    }
+                    result
                 }
-                result
+
+                val launcherClassName = when (targetPackage) {
+                    LAUNCHER3_PACKAGE -> "com.android.launcher3.Launcher"
+                    else -> "com.android.launcher.Launcher"
+                }
+                val launcherClass = classLoader.loadClass(launcherClassName)
+                launcherClass.getDeclaredMethod("onCreate", Bundle::class.java).intercept {
+                    val result = proceed()
+                    instanceOrNull<Context>()?.let { context ->
+                        launcherRef = WeakReference(context)
+                        registerReceiver(context)
+                    }
+                    result
+                }
+                writeLog(Log.INFO, "Hooks installed for $targetPackage")
+            } catch (error: Throwable) {
+                writeLog(Log.ERROR, "Failed to hook $targetPackage", error)
             }
-            writeLog(Log.INFO, "Hooks installed for $packageName")
-        } catch (error: Throwable) {
-            writeLog(Log.ERROR, "Failed to hook $packageName", error)
         }
     }
 
@@ -132,7 +142,12 @@ class MainModule : XposedModule() {
     }
 
     private fun writeLog(level: Int, message: String, error: Throwable? = null) {
-        log(level, TAG, message, error)
+        when (level) {
+            Log.ERROR -> YLog.error(message, error, TAG)
+            Log.WARN -> YLog.warn(message, error, TAG)
+            Log.DEBUG -> YLog.debug(message, error, TAG)
+            else -> YLog.info(message, error, TAG)
+        }
         val context = launcherRef.get() ?: return
         runCatching {
             context.sendBroadcast(Intent("com.immortal521.colorosiconspatch.action.LSPOSED_LOG").apply {

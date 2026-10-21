@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
     kotlin("plugin.parcelize")
 }
 
@@ -104,8 +105,10 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.libsu.core)
+    implementation(libs.yukihook.core)
+    implementation(libs.yukihook.runtime.libxposed)
     compileOnly(libs.libxposed.api)
-    implementation(libs.libxposed.service)
+    ksp(libs.yukihook.compiler)
     implementation(libs.miuix.ui)
     implementation(libs.miuix.nav)
     implementation(libs.material.kolor)
