@@ -72,6 +72,8 @@
   <string name="root_unavailable_summary">%1$s：Root 权限不可用</string>
   <string name="root_access_available">Root 权限可用</string>
   <string name="module_missing_summary">%1$s：图标模块未安装</string>
+  <string name="module_enabled">图标模块已安装并启用</string>
+  <string name="module_not_enabled">图标模块未启用</string>
   <string name="xposed_inactive_summary">%1$s：LSPosed 未激活本模块</string>
   <string name="updating_icons">正在更新图标资源</string>
   <string name="preparing">准备中</string>
