@@ -144,7 +144,8 @@ private fun InitializationScreen(
             onContinue = onComplete,
             onCheckXposed = ::checkXposed,
             onSkipXposed = {
-                environmentCheck = environmentCheck.copy(xposed = CheckStatus.PASSED)
+                environmentCheck = environmentCheck.copy(xposed = CheckStatus.UNVERIFIED)
+                preferences.edit { putString("xposed_status", CheckStatus.UNVERIFIED.name) }
                 if (rebootRequiredBootCount < 0L) {
                     rebootRequiredBootCount = currentBootCount
                     preferences.edit { putLong(REBOOT_BOOT_COUNT, currentBootCount) }

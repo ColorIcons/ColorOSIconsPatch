@@ -75,9 +75,12 @@ fun WelcomeScreen(
         !introComplete -> WelcomeStep.INTRO
         rootStatus == CheckStatus.PASSED &&
                 moduleStatus == CheckStatus.PASSED &&
-                xposedStatus == CheckStatus.PASSED && rebootReady -> WelcomeStep.COMPLETE
+                (xposedStatus == CheckStatus.PASSED || xposedStatus == CheckStatus.UNVERIFIED) &&
+                        rebootReady -> WelcomeStep.COMPLETE
 
-        rootStatus == CheckStatus.PASSED && moduleStatus == CheckStatus.PASSED && xposedStatus == CheckStatus.PASSED -> WelcomeStep.REBOOT
+        rootStatus == CheckStatus.PASSED &&
+                moduleStatus == CheckStatus.PASSED &&
+                (xposedStatus == CheckStatus.PASSED || xposedStatus == CheckStatus.UNVERIFIED) -> WelcomeStep.REBOOT
         rootStatus == CheckStatus.PASSED && moduleStatus == CheckStatus.PASSED -> WelcomeStep.XPOSED
         rootStatus == CheckStatus.PASSED -> WelcomeStep.MODULE
         else -> WelcomeStep.ROOT
@@ -304,12 +307,14 @@ private fun StatusText(status: CheckStatus, label: String) {
         CheckStatus.CHECKING -> stringResource(R.string.checking)
         CheckStatus.PASSED -> stringResource(R.string.passed)
         CheckStatus.FAILED -> stringResource(R.string.failed)
+        CheckStatus.UNVERIFIED -> stringResource(R.string.unverified)
     }
     Text(
         text = stringResource(R.string.status_format, label, text),
         style = MaterialTheme.typography.titleMedium,
-        color = if (status == CheckStatus.FAILED) MaterialTheme.colorScheme.error
-        else MaterialTheme.colorScheme.onSurface,
+        color = if (status == CheckStatus.FAILED || status == CheckStatus.UNVERIFIED) {
+            MaterialTheme.colorScheme.error
+        } else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(top = 24.dp)
     )
 }

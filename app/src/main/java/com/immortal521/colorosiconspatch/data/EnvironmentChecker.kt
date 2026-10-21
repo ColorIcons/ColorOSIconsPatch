@@ -11,7 +11,8 @@ enum class CheckStatus {
     UNKNOWN,
     CHECKING,
     PASSED,
-    FAILED
+    FAILED,
+    UNVERIFIED
 }
 
 enum class RootImplementation(val displayName: String) {
