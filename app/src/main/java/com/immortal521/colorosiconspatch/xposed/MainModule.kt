@@ -32,6 +32,10 @@ class MainModule : YukiHookXposedModule {
         private var launcherRef = WeakReference<Context>(null)
         private var receiver: BroadcastReceiver? = null
         private val hookedPackages = mutableSetOf<String>()
+        private val pendingLogs = ArrayDeque<PendingLog>()
+        private const val MAX_PENDING_LOGS = 100
+
+        private data class PendingLog(val level: Int, val message: String)
     }
 
     override fun onInit() {
@@ -60,6 +64,7 @@ class MainModule : YukiHookXposedModule {
                     instanceOrNull<Context>()?.let { context ->
                         launcherRef = WeakReference(context)
                         registerReceiver(context)
+                        flushPendingLogs(context)
                         writeLog(Log.INFO, "Launcher application captured: $targetPackage")
                     }
                     result
@@ -75,6 +80,7 @@ class MainModule : YukiHookXposedModule {
                     instanceOrNull<Context>()?.let { context ->
                         launcherRef = WeakReference(context)
                         registerReceiver(context)
+                        flushPendingLogs(context)
                     }
                     result
                 }
@@ -142,13 +148,32 @@ class MainModule : YukiHookXposedModule {
     }
 
     private fun writeLog(level: Int, message: String, error: Throwable? = null) {
+        val fullMessage = if (error == null) message else "$message: ${error.message}"
         when (level) {
             Log.ERROR -> YLog.error(message, error, TAG)
             Log.WARN -> YLog.warn(message, error, TAG)
             Log.DEBUG -> YLog.debug(message, error, TAG)
             else -> YLog.info(message, error, TAG)
         }
-        val context = launcherRef.get() ?: return
+        val context = launcherRef.get()
+        if (context == null) {
+            synchronized(pendingLogs) {
+                if (pendingLogs.size == MAX_PENDING_LOGS) pendingLogs.removeFirst()
+                pendingLogs.addLast(PendingLog(level, fullMessage))
+            }
+            return
+        }
+        sendLog(context, level, fullMessage)
+    }
+
+    private fun flushPendingLogs(context: Context) {
+        val logs = synchronized(pendingLogs) {
+            pendingLogs.toList().also { pendingLogs.clear() }
+        }
+        logs.forEach { sendLog(context, it.level, it.message) }
+    }
+
+    private fun sendLog(context: Context, level: Int, message: String) {
         runCatching {
             context.sendBroadcast(Intent("com.immortal521.colorosiconspatch.action.LSPOSED_LOG").apply {
                 setPackage("com.immortal521.colorosiconspatch")
@@ -160,7 +185,7 @@ class MainModule : YukiHookXposedModule {
                         else -> "INFO"
                     }
                 )
-                putExtra("message", if (error == null) message else "$message: ${error.message}")
+                putExtra("message", message)
             })
         }
     }
