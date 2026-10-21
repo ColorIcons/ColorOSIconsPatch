@@ -95,7 +95,8 @@ private fun InitializationScreen(
 
     LaunchedEffect(environmentCheck.root) {
         if (environmentCheck.root == CheckStatus.CHECKING) {
-            environmentCheck = environmentCheck.copy(root = checkRoot(context))
+            checkRoot(context)
+            environmentCheck = loadEnvironmentCheck(context)
         }
     }
 
@@ -135,6 +136,7 @@ private fun InitializationScreen(
         WelcomeScreen(
             modifier = Modifier.fillMaxSize(),
             rootStatus = environmentCheck.root,
+            rootAccessStatus = environmentCheck.rootAccess,
             moduleStatus = environmentCheck.module,
             xposedStatus = environmentCheck.xposed,
             onRequestRoot = ::requestRoot,

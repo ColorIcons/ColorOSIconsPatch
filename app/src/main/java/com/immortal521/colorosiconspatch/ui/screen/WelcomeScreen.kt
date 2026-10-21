@@ -56,6 +56,7 @@ private enum class WelcomeStep {
 fun WelcomeScreen(
     modifier: Modifier = Modifier,
     rootStatus: CheckStatus,
+    rootAccessStatus: CheckStatus,
     moduleStatus: CheckStatus,
     xposedStatus: CheckStatus,
     onRequestRoot: () -> Unit,
@@ -129,6 +130,7 @@ fun WelcomeScreen(
                 StepContent(
                     step = currentStep,
                     rootStatus = rootStatus,
+                    rootAccessStatus = rootAccessStatus,
                     moduleStatus = moduleStatus,
                     xposedStatus = xposedStatus,
                     onRequestRoot = onRequestRoot,
@@ -151,6 +153,7 @@ fun WelcomeScreen(
 private fun StepContent(
     step: WelcomeStep,
     rootStatus: CheckStatus,
+    rootAccessStatus: CheckStatus,
     moduleStatus: CheckStatus,
     xposedStatus: CheckStatus,
     onRequestRoot: () -> Unit,
@@ -191,9 +194,19 @@ private fun StepContent(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 12.dp)
                 )
-                StatusText(rootStatus, stringResource(R.string.root_permission))
+                StatusText(rootAccessStatus, stringResource(R.string.root_permission))
+                if (rootAccessStatus == CheckStatus.PASSED && rootStatus != CheckStatus.PASSED) {
+                    Text(
+                        stringResource(R.string.root_manager_missing),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
                 ActionForStatus(
-                    status = rootStatus,
+                    status = if (rootAccessStatus == CheckStatus.PASSED && rootStatus != CheckStatus.PASSED) {
+                        CheckStatus.FAILED
+                    } else rootAccessStatus,
                     actionLabel = stringResource(R.string.request_root),
                     onClick = onRequestRoot
                 )

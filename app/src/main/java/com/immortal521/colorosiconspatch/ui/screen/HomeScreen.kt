@@ -51,6 +51,7 @@ import com.immortal521.colorosiconspatch.data.CheckStatus
 import com.immortal521.colorosiconspatch.data.IconSyncPlan
 import com.immortal521.colorosiconspatch.data.IconSyncProgress
 import com.immortal521.colorosiconspatch.data.RootImplementation
+import com.immortal521.colorosiconspatch.data.checkModule
 import com.immortal521.colorosiconspatch.data.checkRoot
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
 import com.immortal521.colorosiconspatch.data.xposedServiceAvailability
@@ -75,10 +76,14 @@ fun HomeScreen(
     val context = LocalContext.current
     var environment by remember { mutableStateOf(loadEnvironmentCheck(context)) }
     LaunchedEffect(Unit) {
-        if (environment.root == CheckStatus.PASSED) {
-            checkRoot(context)
-            environment = loadEnvironmentCheck(context)
-        }
+        environment = environment.copy(
+            root = CheckStatus.CHECKING,
+            rootAccess = CheckStatus.CHECKING,
+            module = CheckStatus.CHECKING
+        )
+        checkRoot(context)
+        checkModule(context)
+        environment = loadEnvironmentCheck(context)
     }
     val xposedAvailable by xposedServiceAvailability.collectAsState(false)
     val xposedStatus = if (xposedAvailable) {
@@ -113,6 +118,7 @@ fun HomeScreen(
             RootStatusCard(
                 implementation = environment.implementation,
                 root = environment.root,
+                rootAccess = environment.rootAccess,
                 module = environment.module,
                 xposed = xposedStatus,
                 rootVersion = environment.rootVersion
@@ -185,6 +191,7 @@ fun HomeScreen(
 private fun RootStatusCard(
     implementation: RootImplementation,
     root: CheckStatus,
+    rootAccess: CheckStatus,
     module: CheckStatus,
     xposed: CheckStatus,
     rootVersion: String
@@ -213,8 +220,26 @@ private fun RootStatusCard(
         else -> stringResource(R.string.environment_not_ready)
     }
     val rootVersionText = rootVersion.ifBlank { stringResource(R.string.unknown_value) }
+    val rootStatusText = when {
+        root == CheckStatus.CHECKING || rootAccess == CheckStatus.CHECKING ->
+            stringResource(R.string.environment_checking)
+        rootAccess != CheckStatus.PASSED -> stringResource(
+            R.string.root_unavailable_summary,
+            stringResource(R.string.root_permission)
+        )
+        root != CheckStatus.PASSED -> stringResource(R.string.root_manager_missing)
+        else -> stringResource(
+            R.string.root_manager_version,
+            implementation.displayName,
+            rootVersionText
+        )
+    }
     val moduleStatusText = stringResource(
-        if (module == CheckStatus.PASSED) R.string.module_enabled else R.string.module_not_enabled
+        when (module) {
+            CheckStatus.PASSED -> R.string.module_enabled
+            CheckStatus.CHECKING, CheckStatus.UNKNOWN -> R.string.checking
+            else -> R.string.module_not_enabled
+        }
     )
     val lsposedText = when (xposed) {
         CheckStatus.PASSED -> stringResource(R.string.lsposed_active)
@@ -244,12 +269,9 @@ private fun RootStatusCard(
             ) {
                 Text(title, style = MaterialTheme.typography.titleMediumEmphasized)
                 Text(
-                    stringResource(
-                        R.string.root_manager_version,
-                        implementation.displayName,
-                        rootVersionText
-                    ),
-                    style = MaterialTheme.typography.bodyMedium
+                    rootStatusText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (root == CheckStatus.FAILED) MaterialTheme.colorScheme.error else contentColor
                 )
                 Text(moduleStatusText, style = MaterialTheme.typography.bodyMedium)
                 Text(

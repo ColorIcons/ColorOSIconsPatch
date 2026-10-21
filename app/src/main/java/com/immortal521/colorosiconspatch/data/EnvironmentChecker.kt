@@ -24,54 +24,53 @@ enum class RootImplementation(val displayName: String) {
 
 data class EnvironmentCheckResult(
     val root: CheckStatus = CheckStatus.UNKNOWN,
+    val rootAccess: CheckStatus = CheckStatus.UNKNOWN,
     val module: CheckStatus = CheckStatus.UNKNOWN,
     val implementation: RootImplementation = RootImplementation.UNKNOWN,
     val rootVersion: String = "",
-    val susfs: CheckStatus = CheckStatus.UNKNOWN,
     val xposed: CheckStatus = CheckStatus.UNKNOWN
 )
 
 private const val PREFERENCES = "environment_check"
 private const val ROOT_STATUS = "root_status"
+private const val ROOT_ACCESS_STATUS = "root_access_status"
 private const val MODULE_STATUS = "module_status"
 private const val ROOT_IMPLEMENTATION = "root_implementation"
 private const val ROOT_VERSION = "root_version"
-private const val SUSFS_STATUS = "susfs_status"
 private const val XPOSED_STATUS = "xposed_status"
 private const val MODULE_ID = "ColorOSIconsPatch"
 
 fun loadEnvironmentCheck(context: Context): EnvironmentCheckResult {
     val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    val root = readStatus(preferences.getString(ROOT_STATUS, null))
+    val rootAccess = preferences.getString(ROOT_ACCESS_STATUS, null)
+        ?.let(::readStatus)
+        ?: if (root == CheckStatus.PASSED) CheckStatus.PASSED else CheckStatus.UNKNOWN
     return EnvironmentCheckResult(
-        root = readStatus(preferences.getString(ROOT_STATUS, null)),
+        root = root,
+        rootAccess = rootAccess,
         module = readStatus(preferences.getString(MODULE_STATUS, null)),
         implementation = readImplementation(preferences.getString(ROOT_IMPLEMENTATION, null)),
         rootVersion = preferences.getString(ROOT_VERSION, "").orEmpty(),
-        susfs = readStatus(preferences.getString(SUSFS_STATUS, null)),
         xposed = readStatus(preferences.getString(XPOSED_STATUS, null))
     )
 }
 
 suspend fun checkRoot(context: Context): CheckStatus = withContext(Dispatchers.IO) {
     val shell = Shell.getShell()
+    val rootAccess = if (shell.isRoot) CheckStatus.PASSED else CheckStatus.FAILED
     val implementation = detectRootImplementation()
-    val status = if (shell.isRoot && implementation != RootImplementation.UNKNOWN) {
+    val status = if (rootAccess == CheckStatus.PASSED && implementation != RootImplementation.UNKNOWN) {
         CheckStatus.PASSED
     } else {
         CheckStatus.FAILED
     }
-    val susfs =
-        if (shell.isRoot && commandSucceeds("grep -q susfs /proc/filesystems || test -e /sys/fs/susfs")) {
-            CheckStatus.PASSED
-        } else {
-            CheckStatus.FAILED
-        }
     context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         .edit {
             putString(ROOT_STATUS, status.name)
+                .putString(ROOT_ACCESS_STATUS, rootAccess.name)
                 .putString(ROOT_IMPLEMENTATION, implementation.name)
                 .putString(ROOT_VERSION, detectRootVersion(implementation))
-                .putString(SUSFS_STATUS, susfs.name)
         }
     status
 }

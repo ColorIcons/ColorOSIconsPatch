@@ -70,6 +70,7 @@
   <string name="environment_ready_summary">%1$s：图标模块和 LSPosed 均已激活</string>
   <string name="environment_checking_summary">%1$s：正在确认 LSPosed 是否已激活</string>
   <string name="root_unavailable_summary">%1$s：Root 权限不可用</string>
+  <string name="root_access_available">Root 权限可用</string>
   <string name="module_missing_summary">%1$s：图标模块未安装</string>
   <string name="xposed_inactive_summary">%1$s：LSPosed 未激活本模块</string>
   <string name="updating_icons">正在更新图标资源</string>

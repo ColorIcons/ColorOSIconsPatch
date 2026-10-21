@@ -144,10 +144,10 @@ object LogStore {
             appendLine("device_model=${Build.MODEL}")
             appendLine("rom_version=${Build.DISPLAY}")
             appendLine("root_status=${check.root}")
+            appendLine("root_access_status=${check.rootAccess}")
             appendLine("root_manager=${check.implementation.displayName}")
             appendLine("root_version=${check.rootVersion}")
             appendLine("module_status=${check.module}")
-            appendLine("susfs_status=${check.susfs}")
             appendLine("lsposed_status=${check.xposed}")
             appendLine("lsposed_service_active=${YukiHook.Status.isModuleActive}")
         }
