@@ -54,6 +54,8 @@ import com.immortal521.colorosiconspatch.data.RootImplementation
 import com.immortal521.colorosiconspatch.data.checkRoot
 import com.immortal521.colorosiconspatch.data.loadEnvironmentCheck
 import com.immortal521.colorosiconspatch.data.xposedServiceAvailability
+import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
+import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -132,21 +134,26 @@ fun HomeScreen(
                 deviceModel = deviceModel,
                 kernelVersion = kernelVersion
             )
-            SegmentedListItem(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = onOpenLogs,
-                shapes = ListItemDefaults.segmentedShapes(0, 1),
-                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                leadingContent = { Icon(Icons.Rounded.Description, contentDescription = null) },
-                content = { Text(stringResource(R.string.logs)) },
-                supportingContent = { Text(stringResource(R.string.logs_summary)) },
-                trailingContent = {
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null
-                    )
-                }
-            )
+            SegmentedColumn(content = listOf({
+                SegmentedListItem(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onOpenLogs,
+                    shapes = LocalListItemShapes.current
+                        ?: ListItemDefaults.segmentedShapes(0, 1),
+                    colors = homeListItemColors(),
+                    leadingContent = {
+                        Icon(Icons.Rounded.Description, contentDescription = null)
+                    },
+                    content = { Text(stringResource(R.string.logs)) },
+                    supportingContent = { Text(stringResource(R.string.logs_summary)) },
+                    trailingContent = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }))
         }
     }
 
@@ -347,75 +354,70 @@ private fun SystemInfoCard(
     deviceModel: String,
     kernelVersion: String
 ) {
-    Card(
+    SegmentedColumn(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceBright
-        ),
-        shape = MaterialTheme.shapes.large
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            InfoCardItem(
-                Icons.Filled.Android,
-                stringResource(R.string.android_label),
-                androidVersion
-            )
-            InfoCardItem(
-                Icons.Filled.Security,
-                stringResource(R.string.security_patch),
-                securityPatch
-            )
-            InfoCardItem(
-                Icons.Filled.Smartphone,
-                stringResource(R.string.device_model),
-                deviceModel
-            )
-            InfoCardItem(
-                Icons.Filled.DeveloperBoard,
-                stringResource(R.string.kernel_label),
-                kernelVersion
-            )
-        }
-    }
+        content = listOf(
+            {
+                InfoListItem(
+                    Icons.Filled.Android,
+                    stringResource(R.string.android_label),
+                    androidVersion
+                )
+            },
+            {
+                InfoListItem(
+                    Icons.Filled.Security,
+                    stringResource(R.string.security_patch),
+                    securityPatch
+                )
+            },
+            {
+                InfoListItem(
+                    Icons.Filled.Smartphone,
+                    stringResource(R.string.device_model),
+                    deviceModel
+                )
+            },
+            {
+                InfoListItem(
+                    Icons.Filled.DeveloperBoard,
+                    stringResource(R.string.kernel_label),
+                    kernelVersion
+                )
+            }
+        )
+    )
 }
 
 @Composable
-private fun InfoCardItem(
+private fun InfoListItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     content: String
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge
+    SegmentedListItem(
+        onClick = {},
+        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
+        colors = homeListItemColors(),
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                text = content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+        },
+        content = { Text(label) },
+        supportingContent = { Text(content) },
+        verticalAlignment = Alignment.CenterVertically
+    )
 }
+
+@Composable
+private fun homeListItemColors() = ListItemDefaults.segmentedColors(
+    containerColor = MaterialTheme.colorScheme.surfaceBright,
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceBright,
+    supportingContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+)
 
 @Composable
 private fun StatusPill(text: String, color: Color) {
