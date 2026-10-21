@@ -66,7 +66,13 @@ private fun InitializationScreen(
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
     }
     var environmentCheck by remember {
-        mutableStateOf(loadEnvironmentCheck(context))
+        mutableStateOf(
+            loadEnvironmentCheck(context).copy(
+                root = CheckStatus.CHECKING,
+                rootAccess = CheckStatus.CHECKING,
+                module = CheckStatus.UNKNOWN
+            )
+        )
     }
     var moduleInstallStatus by remember { mutableStateOf<ModuleOperationStatus?>(null) }
     var moduleInstallMessage by remember { mutableStateOf<String?>(null) }
@@ -79,7 +85,10 @@ private fun InitializationScreen(
     }
 
     fun requestRoot() {
-        environmentCheck = environmentCheck.copy(root = CheckStatus.CHECKING)
+        environmentCheck = environmentCheck.copy(
+            root = CheckStatus.CHECKING,
+            rootAccess = CheckStatus.CHECKING
+        )
     }
 
     fun installModule() {

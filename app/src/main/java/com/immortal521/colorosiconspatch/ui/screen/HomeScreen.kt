@@ -196,7 +196,9 @@ private fun RootStatusCard(
     xposed: CheckStatus,
     rootVersion: String
 ) {
-    val ready = root == CheckStatus.PASSED && module == CheckStatus.PASSED
+    val ready = root == CheckStatus.PASSED &&
+            module == CheckStatus.PASSED &&
+            xposed == CheckStatus.PASSED
     val containerColor = if (ready) {
         MaterialTheme.colorScheme.secondaryContainer
     } else {
