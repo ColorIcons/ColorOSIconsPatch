@@ -167,6 +167,11 @@ private fun MainPagerScreen(
         }
         iconIndexError = index.error
         iconIndex = index
+        if (!index.syncAllowed) {
+            installedApps = emptyList()
+            syncPlan = null
+            return
+        }
         val apps = withContext(Dispatchers.IO) {
             loadInstalledApps(context, index.adaptedPackages)
         }

@@ -26,7 +26,6 @@ class ColorIconsPatchApplication : ModuleApplication() {
         super.onCreate()
         setPredictiveBackEnabled(this, loadAppSettings(this).predictiveBack)
         LogStore.info(this, "Application started")
-        UpdateDownloadCleanup.clear(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             updateInstalledModuleMetadata(this@ColorIconsPatchApplication)
         }
@@ -34,6 +33,8 @@ class ColorIconsPatchApplication : ModuleApplication() {
             object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
                     if (intent.action != ACTION_LSPOSED_LOG) return
+                    val message = intent.getStringExtra(EXTRA_LOG_MESSAGE).orEmpty()
+                    if (message.length > 16_384) return
                     val level = runCatching {
                         LogLevel.valueOf(intent.getStringExtra(EXTRA_LOG_LEVEL).orEmpty())
                     }.getOrDefault(LogLevel.INFO)
@@ -41,7 +42,7 @@ class ColorIconsPatchApplication : ModuleApplication() {
                         context,
                         LogCategory.LSPOSED,
                         level,
-                        intent.getStringExtra(EXTRA_LOG_MESSAGE).orEmpty()
+                        message
                     )
                 }
             },

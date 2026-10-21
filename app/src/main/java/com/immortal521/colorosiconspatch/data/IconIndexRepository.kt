@@ -19,8 +19,12 @@ private const val DEFAULT_INDEX_URL = GITHUB_INDEX_URL
 private const val INDEX_CACHE = "icon-index.json"
 private const val CONNECT_TIMEOUT_MS = 10_000
 private const val READ_TIMEOUT_MS = 15_000
+internal const val MAX_INDEX_BYTES = 8 * 1024 * 1024
+internal const val MAX_INDEX_ENTRIES = 10_000
+internal const val MAX_ICON_FILE_BYTES = 8L * 1024 * 1024
+internal const val MAX_TOTAL_DOWNLOAD_BYTES = 256L * 1024 * 1024
 
-private const val PERSISTENT_ICONS = "/data/adb/ColorOSIconsPatch/uxicons"
+internal const val ICON_STORAGE_ROOT = "/data/adb/ColorOSIconsPatch/uxicons"
 
 data class IconFile(
     val name: String,
@@ -43,7 +47,7 @@ fun loadCachedIconPackage(context: Context, packageName: String): IconPackage? {
 }
 
 fun loadCachedIconBitmap(context: Context, packageName: String, fileName: String): ImageBitmap? {
-    val target = "$PERSISTENT_ICONS/$packageName/$fileName"
+    val target = "$ICON_STORAGE_ROOT/$packageName/$fileName"
     val cached = File.createTempFile("icon-preview-", ".png", context.cacheDir)
     return try {
         val result = com.topjohnwu.superuser.Shell.cmd(
@@ -59,7 +63,8 @@ fun loadCachedIconBitmap(context: Context, packageName: String, fileName: String
 data class IconIndexLoadResult(
     val packages: Map<String, IconPackage>,
     val requiredFiles: List<IconFile> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val syncAllowed: Boolean = true
 ) {
     val adaptedPackages: Set<String>
         get() = packages.keys
@@ -74,18 +79,20 @@ fun loadIconIndex(
     val supportedVariants = enabledVariants.intersect(supportedDownloadVariants().toSet())
     return try {
         val json = downloadIndex(indexUrl)
-        cache.writeText(json)
         parseIndex(json, supportedVariants).let { (requiredFiles, packages) ->
+            cache.writeText(json)
             IconIndexLoadResult(
                 packages = packages,
                 requiredFiles = requiredFiles
             )
         }
-    } catch (_: Exception) {
+    } catch (error: Exception) {
+        LogStore.error(context, "Icon index download failed: ${error.javaClass.simpleName}: ${error.message.orEmpty()}")
         if (!cache.isFile) {
             IconIndexLoadResult(
                 emptyMap(),
-                error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed)
+                error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed),
+                syncAllowed = false
             )
         } else {
             try {
@@ -96,10 +103,12 @@ fun loadIconIndex(
                         error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_cache_fallback)
                     )
                 }
-            } catch (_: Exception) {
+            } catch (cacheError: Exception) {
+                LogStore.error(context, "Cached icon index is invalid: ${cacheError.javaClass.simpleName}: ${cacheError.message.orEmpty()}")
                 IconIndexLoadResult(
                     emptyMap(),
-                    error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed)
+                    error = context.getString(com.immortal521.colorosiconspatch.R.string.icon_index_read_failed),
+                    syncAllowed = false
                 )
             }
         }
@@ -107,23 +116,31 @@ fun loadIconIndex(
 }
 
 private fun downloadIndex(indexUrl: String): String {
-    val connection = URL(indexUrl).openConnection() as HttpURLConnection
+    val url = URL(indexUrl)
+    check(url.protocol.equals("https", ignoreCase = true)) { "Icon index must use HTTPS" }
+    val connection = url.openConnection() as HttpURLConnection
     return try {
         connection.connectTimeout = CONNECT_TIMEOUT_MS
         connection.readTimeout = READ_TIMEOUT_MS
         connection.requestMethod = "GET"
         connection.connect()
         check(connection.responseCode in 200..299) { "HTTP ${connection.responseCode}" }
-        connection.inputStream.bufferedReader().use { it.readText() }
+        check(connection.contentLengthLong in -1..MAX_INDEX_BYTES.toLong()) { "Icon index is too large" }
+        connection.inputStream.use { it.readBounded(MAX_INDEX_BYTES).toString(Charsets.UTF_8) }
     } finally {
         connection.disconnect()
     }
 }
 
-private fun parseIndex(
+internal fun validateIndexSize(json: String) {
+    require(json.toByteArray(Charsets.UTF_8).size <= MAX_INDEX_BYTES) { "Icon index is too large" }
+}
+
+internal fun parseIndex(
     json: String,
     enabledVariants: Set<String>
 ): Pair<List<IconFile>, Map<String, IconPackage>> {
+    validateIndexSize(json)
     val root = JSONObject(json)
     val requiredFiles = buildList {
         addFiles(root.optJSONArray("required_files"))
@@ -133,6 +150,7 @@ private fun parseIndex(
         val packageKeys = packages.keys()
         while (packageKeys.hasNext()) {
             val packageName = packageKeys.next()
+            if (!isSafePackageName(packageName)) continue
             val packageJson = packages.getJSONObject(packageName)
             val files = buildList {
                 addFiles(packageJson.optJSONArray("required"))
@@ -151,6 +169,8 @@ private fun parseIndex(
             )
         }
     }
+    val entryCount = requiredFiles.size + packageMap.values.sumOf { it.files.size }
+    check(entryCount <= MAX_INDEX_ENTRIES) { "Icon index has too many entries" }
     return requiredFiles to packageMap
 }
 
@@ -158,15 +178,15 @@ private fun MutableList<IconFile>.addFiles(array: org.json.JSONArray?) {
     if (array == null) return
     for (index in 0 until array.length()) {
         val file = array.getJSONObject(index)
-        if (filterSupportedIconFileName(file.getString("file"))) {
-            add(
-                IconFile(
-                    name = file.getString("file"),
-                    path = file.getString("path"),
-                    sha256 = file.getString("sha256"),
-                    size = file.optLong("size", 0L)
-                )
-            )
+        val name = file.getString("file")
+        val path = file.getString("path")
+        val size = file.optLong("size", -1L)
+        check(isSafeIconFileName(name)) { "Invalid icon file name" }
+        check(isSafeIconDownloadPath(path)) { "Invalid icon download path" }
+        check(file.getString("sha256").matches(Regex("[0-9a-fA-F]{64}"))) { "Invalid icon checksum" }
+        check(size in 0..MAX_ICON_FILE_BYTES) { "Invalid icon file size" }
+        if (filterSupportedIconFileName(name)) {
+            add(IconFile(name, path, file.getString("sha256").lowercase(), size))
         }
     }
 }
@@ -179,7 +199,7 @@ data class IconSyncPlan(
     val totalBytes: Long get() = updates.sumOf { it.file.size }
     val affectedApps: Int
         get() = (updates.map { it.packageName } + staleFiles.map {
-            it.substringAfter(PERSISTENT_ICONS).trimStart('/').substringBefore('/')
+            it.substringAfter(ICON_STORAGE_ROOT).trimStart('/').substringBefore('/')
         })
             .filter(String::isNotBlank)
             .distinct()
@@ -206,21 +226,34 @@ fun buildIconSyncPlan(
     installedPackages: Set<String>,
     index: IconIndexLoadResult
 ): IconSyncPlan {
+    require(index.syncAllowed) { "Icon index is invalid; refusing to plan file changes" }
     val keep = mutableSetOf<String>()
     val checksums = readLocalChecksums()
     val updates = buildList {
+        var totalBytes = 0L
         for (requiredFile in index.requiredFiles) {
-            val target = "$PERSISTENT_ICONS/${requiredFile.name}"
+            check(isSafeIconFileName(requiredFile.name)) { "Invalid required icon file name" }
+            check(isSafeIconDownloadPath(requiredFile.path)) { "Invalid icon download path" }
+            check(requiredFile.size in 0..MAX_ICON_FILE_BYTES) { "Invalid icon file size" }
+            val target = "$ICON_STORAGE_ROOT/${requiredFile.name}"
             keep += target
             if (checksums[target] != requiredFile.sha256) {
+                totalBytes += requiredFile.size
+                check(totalBytes <= MAX_TOTAL_DOWNLOAD_BYTES) { "Icon download plan is too large" }
                 add(IconFileUpdate(REQUIRED_PACKAGE, requiredFile, target, requiredFile.size))
             }
         }
         for (packageName in installedPackages.intersect(index.packages.keys)) {
+            check(isSafePackageName(packageName)) { "Invalid package name" }
             for (iconFile in index.packages.getValue(packageName).files) {
-                val target = "$PERSISTENT_ICONS/$packageName/${iconFile.name}"
+                check(isSafeIconFileName(iconFile.name)) { "Invalid icon file name" }
+                check(isSafeIconDownloadPath(iconFile.path)) { "Invalid icon download path" }
+                check(iconFile.size in 0..MAX_ICON_FILE_BYTES) { "Invalid icon file size" }
+                val target = "$ICON_STORAGE_ROOT/$packageName/${iconFile.name}"
                 keep += target
                 if (checksums[target] != iconFile.sha256) {
+                    totalBytes += iconFile.size
+                    check(totalBytes <= MAX_TOTAL_DOWNLOAD_BYTES) { "Icon download plan is too large" }
                     add(IconFileUpdate(packageName, iconFile, target, iconFile.size))
                 }
             }
@@ -234,9 +267,10 @@ suspend fun syncIconResources(
     plan: IconSyncPlan,
     onProgress: (IconSyncProgress) -> Unit
 ): IconSyncResult = coroutineScope {
+    validateSyncPlan(plan)
     val updatesByApp = plan.updates.groupBy { it.packageName }
     val staleByApp = plan.staleFiles.groupBy {
-        it.substringAfter(PERSISTENT_ICONS).trimStart('/').substringBefore('/')
+        it.substringAfter(ICON_STORAGE_ROOT).trimStart('/').substringBefore('/')
     }
     val apps = (updatesByApp.keys + staleByApp.keys).filter(String::isNotBlank).distinct()
     val totalApps = apps.size
@@ -255,6 +289,11 @@ suspend fun syncIconResources(
             var removedForApp = 0
 
             for (update in updates) {
+                check(isSafePersistentIconPath(update.target)) { "Invalid icon target" }
+                check(isSafePackageName(update.packageName) || update.packageName == REQUIRED_PACKAGE) {
+                    "Invalid icon package"
+                }
+                check(update.file.size in 0..MAX_ICON_FILE_BYTES) { "Invalid icon file size" }
                 val temporary = File.createTempFile("icon-", ".png", context.cacheDir)
                 try {
                     onProgress(
@@ -282,25 +321,27 @@ suspend fun syncIconResources(
                     temporary.delete()
                 }
             }
-            for (staleFile in staleFiles) {
-                check(runRoot("rm -f ${shellQuote(staleFile)}").first == 0) {
-                    context.getString(com.immortal521.colorosiconspatch.R.string.delete_old_icons_failed)
-                }
-                removedForApp++
-            }
             val completed = completedMutex.withLock { ++completedApps }
             onProgress(IconSyncProgress(completed, totalApps, packageName))
             IconSyncResult(downloadedForApp, removedForApp)
         }
     }.awaitAll()
-    IconSyncResult(results.sumOf { it.downloaded }, results.sumOf { it.removed })
+
+    // A failed download must never be followed by deletion of existing icons.
+    for (staleFile in plan.staleFiles) {
+        check(isSafePersistentIconPath(staleFile)) { "Invalid stale icon path" }
+        check(runRoot(rootFileCommand("rm -f -- ${shellQuote(staleFile)}", staleFile)).first == 0) {
+            context.getString(com.immortal521.colorosiconspatch.R.string.delete_old_icons_failed)
+        }
+    }
+    IconSyncResult(results.sumOf { it.downloaded }, plan.staleFiles.size)
 }
 
 private const val REQUIRED_PACKAGE = "__required__"
 
 private fun readLocalChecksums(): Map<String, String> {
     val result = runRoot(
-        "find ${shellQuote(PERSISTENT_ICONS)} -type f -exec sha256sum {} +"
+        "find ${shellQuote(ICON_STORAGE_ROOT)} -type f -exec sha256sum {} +"
     )
     if (result.first != 0) return emptyMap()
     return result.second.lineSequence().mapNotNull { line ->
@@ -313,19 +354,36 @@ private fun readLocalChecksums(): Map<String, String> {
 }
 
 private fun installRootFile(context: Context, source: File, target: String) {
-    val command = "mkdir -p ${shellQuote(target.substringBeforeLast('/'))} && " +
-            "cp ${shellQuote(source.absolutePath)} ${shellQuote(target)} && " +
-            "chmod 0644 ${shellQuote(target)}"
+    check(isSafePersistentIconPath(target)) { "Invalid icon target" }
+    val parent = target.substringBeforeLast('/')
+    val staged = shellQuote("$target.tmp")
+    val command = "[ -d ${shellQuote(ICON_STORAGE_ROOT)} ] && " +
+            "[ ! -L /data ] && [ ! -L /data/adb ] && " +
+            "[ ! -L /data/adb/ColorOSIconsPatch ] && " +
+            "[ ! -L ${shellQuote(ICON_STORAGE_ROOT)} ] && " +
+            "mkdir -p -- ${shellQuote(parent)} && " +
+            "[ ! -L ${shellQuote(parent)} ] && [ ! -L ${shellQuote(target)} ] && " +
+            "rm -f -- $staged && " +
+            "cp -- ${shellQuote(source.absolutePath)} $staged && " +
+            "chmod 0644 -- $staged && " +
+            "mv -f -- $staged ${shellQuote(target)}"
     check(runRoot(command).first == 0) { context.getString(com.immortal521.colorosiconspatch.R.string.write_icons_failed) }
 }
 
 private fun downloadFile(path: String, output: File, baseUrl: String) {
-    val connection = URL("$baseUrl/$path").openConnection() as HttpURLConnection
+    check(isSafeIconDownloadPath(path)) { "Invalid icon download path" }
+    val base = URL(baseUrl)
+    check(base.protocol.equals("https", ignoreCase = true)) { "Icon downloads must use HTTPS" }
+    val url = URL(base, "${base.path.trimEnd('/')}/$path")
+    check(url.host == base.host && url.port == base.port) { "Icon download escaped its host" }
+    val connection = url.openConnection() as HttpURLConnection
     try {
         connection.connectTimeout = CONNECT_TIMEOUT_MS
         connection.readTimeout = READ_TIMEOUT_MS
+        connection.connect()
         check(connection.responseCode in 200..299) { "HTTP ${connection.responseCode}" }
-        connection.inputStream.use { input -> output.outputStream().use { input.copyTo(it) } }
+        check(connection.contentLengthLong in -1..MAX_ICON_FILE_BYTES) { "Icon file is too large" }
+        connection.inputStream.use { input -> output.outputStream().use { input.copyBoundedTo(it, MAX_ICON_FILE_BYTES) } }
     } finally {
         connection.disconnect()
     }
@@ -342,6 +400,69 @@ private fun sha256(file: File): String {
         }
     }
     return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+internal fun isSafeIconFileName(value: String): Boolean =
+    value.isNotEmpty() && value.length <= 255 &&
+            value != "." && value != ".." &&
+            value.none { it == '/' || it == '\\' || it == '\u0000' || it == '\n' || it == '\r' || it == '?' || it == '#' }
+
+internal fun isSafePackageName(value: String): Boolean =
+    value.matches(Regex("[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+"))
+
+internal fun isSafeIconDownloadPath(value: String): Boolean =
+    value.isNotEmpty() && !value.startsWith('/') && !value.startsWith('\\') &&
+            !value.contains('%') &&
+            !value.any { it == '\u0000' || it == '\n' || it == '\r' || it == '?' || it == '#' || it == '\\' } &&
+            value.split('/').all { it.isNotEmpty() && it != "." && it != ".." && it.length <= 255 }
+
+internal fun isSafePersistentIconPath(value: String): Boolean {
+    if (!value.startsWith("$ICON_STORAGE_ROOT/")) return false
+    val parts = value.removePrefix("$ICON_STORAGE_ROOT/").split('/')
+    return parts.size in 1..2 && parts.all(::isSafeIconFileName) &&
+            (parts.size == 1 || isSafePackageName(parts[0]))
+}
+
+internal fun validateSyncPlan(plan: IconSyncPlan) {
+    require(plan.totalBytes <= MAX_TOTAL_DOWNLOAD_BYTES) { "Icon download plan is too large" }
+    plan.updates.forEach { update ->
+        require(isSafePersistentIconPath(update.target)) { "Invalid icon target" }
+        require(isSafePackageName(update.packageName) || update.packageName == REQUIRED_PACKAGE) {
+            "Invalid icon package"
+        }
+        require(isSafeIconFileName(update.file.name) && update.file.size in 0..MAX_ICON_FILE_BYTES) {
+            "Invalid icon file metadata"
+        }
+    }
+    plan.staleFiles.forEach { require(isSafePersistentIconPath(it)) { "Invalid stale icon path" } }
+}
+
+private fun rootFileCommand(operation: String, path: String): String {
+    check(isSafePersistentIconPath(path)) { "Invalid persistent icon path" }
+    val parent = path.substringBeforeLast('/')
+    return "[ -d ${shellQuote(ICON_STORAGE_ROOT)} ] && " +
+            "[ ! -L /data ] && [ ! -L /data/adb ] && " +
+            "[ ! -L /data/adb/ColorOSIconsPatch ] && " +
+            "[ ! -L ${shellQuote(ICON_STORAGE_ROOT)} ] && " +
+            "[ ! -L ${shellQuote(parent)} ] && [ ! -L ${shellQuote(path)} ] && $operation"
+}
+
+private fun java.io.InputStream.readBounded(maxBytes: Int): ByteArray {
+    val output = java.io.ByteArrayOutputStream()
+    copyBoundedTo(output, maxBytes.toLong())
+    return output.toByteArray()
+}
+
+private fun java.io.InputStream.copyBoundedTo(output: java.io.OutputStream, maxBytes: Long) {
+    val buffer = ByteArray(8192)
+    var total = 0L
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) return
+        total += count
+        check(total <= maxBytes) { "Downloaded file is too large" }
+        output.write(buffer, 0, count)
+    }
 }
 
 private fun runRoot(command: String): Pair<Int, String> {

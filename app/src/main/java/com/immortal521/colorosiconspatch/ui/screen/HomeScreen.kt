@@ -213,10 +213,13 @@ private fun RootStatusCard(
         else -> stringResource(R.string.environment_not_ready)
     }
     val rootVersionText = rootVersion.ifBlank { stringResource(R.string.unknown_value) }
-    val lsposedText = if (xposed == CheckStatus.PASSED) {
-        stringResource(R.string.lsposed_active)
-    } else {
-        stringResource(R.string.lsposed_inactive_refresh)
+    val moduleStatusText = stringResource(
+        if (module == CheckStatus.PASSED) R.string.module_enabled else R.string.module_not_enabled
+    )
+    val lsposedText = when (xposed) {
+        CheckStatus.PASSED -> stringResource(R.string.lsposed_active)
+        CheckStatus.UNKNOWN, CheckStatus.CHECKING -> stringResource(R.string.environment_checking)
+        else -> stringResource(R.string.lsposed_unavailable)
     }
 
     Surface(
@@ -248,6 +251,7 @@ private fun RootStatusCard(
                     ),
                     style = MaterialTheme.typography.bodyMedium
                 )
+                Text(moduleStatusText, style = MaterialTheme.typography.bodyMedium)
                 Text(
                     lsposedText,
                     style = MaterialTheme.typography.bodyMedium,

@@ -18,21 +18,14 @@ object UpdateDownloadCleanup {
         }
     }
 
-    fun clear(context: Context) {
+    fun clear(context: Context, completedDownloadId: Long? = null) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val downloadId = prefs.getLong(KEY_DOWNLOAD_ID, -1L)
-        if (downloadId != -1L) {
-            context.getSystemService(DownloadManager::class.java).remove(downloadId)
-        }
+        if (downloadId == -1L || completedDownloadId != null && downloadId != completedDownloadId) return
+        context.getSystemService(DownloadManager::class.java).remove(downloadId)
         val filename = prefs.getString(KEY_FILENAME, DEFAULT_FILENAME) ?: DEFAULT_FILENAME
-        File(
-            context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
-            filename
-        ).delete()
-        File(
-            context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
-            DEFAULT_FILENAME
-        ).delete()
+        val downloadDirectory = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+        if (filename == DEFAULT_FILENAME) File(downloadDirectory, DEFAULT_FILENAME).delete()
         prefs.edit { clear() }
     }
 }

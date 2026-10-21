@@ -6,8 +6,7 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="file" path="icon-index.json" />
+    <exclude domain="file" path="logs" />
+    <exclude domain="external" path="." />
 </full-backup-content>

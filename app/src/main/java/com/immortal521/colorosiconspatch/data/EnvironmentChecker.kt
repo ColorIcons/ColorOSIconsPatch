@@ -76,7 +76,7 @@ suspend fun checkRoot(context: Context): CheckStatus = withContext(Dispatchers.I
 }
 
 suspend fun checkModule(context: Context): CheckStatus = withContext(Dispatchers.IO) {
-    val status = if (moduleExists(MODULE_ID)) CheckStatus.PASSED else CheckStatus.FAILED
+    val status = if (moduleIsInstalledAndEnabled(MODULE_ID)) CheckStatus.PASSED else CheckStatus.FAILED
     context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         .edit {
             putString(MODULE_STATUS, status.name)
@@ -110,16 +110,20 @@ private fun detectRootVersion(implementation: RootImplementation): String {
     } else output
 }
 
-fun moduleExists(moduleId: String): Boolean {
-    val moduleRoots = listOf(
-        "/data/adb/modules/$moduleId",
-        "/data/adb/modules_update/$moduleId",
-        "/data/adb/modules/${moduleId.lowercase()}",
-        "/data/adb/modules_update/${moduleId.lowercase()}"
-    )
-    if (moduleRoots.any { File(it, "module.prop").isFile }) return true
-    return commandSucceeds(moduleRoots.joinToString(" || ") { "test -f '$it/module.prop'" })
-}
+fun moduleExists(moduleId: String): Boolean = moduleRoots(moduleId).any { File(it, "module.prop").isFile } ||
+        commandSucceeds(moduleRoots(moduleId).joinToString(" || ") { "test -f '$it/module.prop'" })
+
+fun moduleIsInstalledAndEnabled(moduleId: String): Boolean =
+    commandSucceeds(moduleRoots(moduleId).joinToString(" || ") {
+        "test -f '$it/module.prop' && test ! -e '$it/disable' && test ! -e '$it/remove'"
+    })
+
+private fun moduleRoots(moduleId: String) = listOf(
+    "/data/adb/modules/$moduleId",
+    "/data/adb/modules_update/$moduleId",
+    "/data/adb/modules/${moduleId.lowercase()}",
+    "/data/adb/modules_update/${moduleId.lowercase()}"
+)
 
 fun commandSucceeds(command: String): Boolean = Shell.cmd(command).exec().isSuccess
 
