@@ -20,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,18 +37,25 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.AppSettingsState
+import com.immortal521.colorosiconspatch.data.downloadedMonochromeFileName
+import com.immortal521.colorosiconspatch.data.switchMonochromeFiles
 import com.immortal521.colorosiconspatch.data.IconFile
 import com.immortal521.colorosiconspatch.data.IconPackage
 import com.immortal521.colorosiconspatch.data.loadCachedIconBitmap
 import com.immortal521.colorosiconspatch.data.loadCachedIconPackage
+import com.immortal521.colorosiconspatch.data.loadNativeMonochrome
+import com.immortal521.colorosiconspatch.data.sendLauncherRefresh
 import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
 import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
@@ -60,8 +69,23 @@ fun AppDetailScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings by AppSettingsState.settings.collectAsState()
+    val scope = rememberCoroutineScope()
     var appPackage by remember(packageName) { mutableStateOf<IconPackage?>(null) }
     var previews by remember(packageName) { mutableStateOf<Map<String, ImageBitmap>>(emptyMap()) }
+    var nativePreview by remember(packageName) { mutableStateOf<ImageBitmap?>(null) }
+    var switchError by remember(packageName) { mutableStateOf<String?>(null) }
+    val nativeAvailable = remember(packageName) {
+        runCatching { loadNativeMonochrome(context, packageName) }.getOrNull() != null
+    }
+    val downloadedFiles = appPackage?.files.orEmpty().filter { it.name.startsWith("monochrome") }
+    val downloadedAvailable = downloadedFiles.isNotEmpty()
+    val selectedSource = when {
+        "native:$packageName" in settings.monochromeSources && nativeAvailable -> "native"
+        downloadedAvailable -> "download"
+        nativeAvailable -> "native"
+        else -> "download"
+    }
+    val canSwitchSource = nativeAvailable && downloadedAvailable
     val appLabel = remember(packageName) {
         runCatching {
             context.packageManager.getApplicationInfo(packageName, 0)
@@ -85,8 +109,15 @@ fun AppDetailScreen(
         withContext(Dispatchers.IO) {
             val loaded = loadCachedIconPackage(context, packageName)
             appPackage = loaded
+            nativePreview = loadNativeMonochrome(context, packageName)?.let { drawable ->
+                drawable.toBitmap(192, 192).asImageBitmap()
+            }
             previews = loaded?.files?.associateNotNull { file ->
-                loadCachedIconBitmap(context, packageName, file.name)?.let { file.name to it }
+                val preview = loadCachedIconBitmap(context, packageName, file.name)
+                    ?: if (file.name.startsWith("monochrome")) {
+                        loadCachedIconBitmap(context, packageName, downloadedMonochromeFileName(file.name))
+                    } else null
+                preview?.let { file.name to it }
             }.orEmpty()
         }
     }
@@ -126,10 +157,53 @@ fun AppDetailScreen(
                 )
             }))
 
+            if (canSwitchSource) {
+                SegmentedColumn(content = listOf {
+                    SegmentedListItem(
+                        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
+                        colors = detailItemColors(),
+                        content = { Text(stringResource(R.string.monochrome_use_native)) },
+                        supportingContent = switchError?.let { error -> { Text(error) } },
+                        trailingContent = {
+                            Switch(
+                                checked = selectedSource == "native",
+                                onCheckedChange = { enabled ->
+                                    if (canSwitchSource) {
+                                        scope.launch {
+                                            switchError = null
+                                            runCatching {
+                                                switchMonochromeFiles(context, packageName, downloadedFiles, enabled)
+                                            }.onSuccess {
+                                                AppSettingsState.update(context) { current ->
+                                                    current.copy(
+                                                        monochromeSources = current.monochromeSources
+                                                            .filterNot { value -> value == packageName || value == "native:$packageName" }
+                                                            .toSet() + if (enabled) "native:$packageName" else packageName
+                                                    )
+                                                }
+                                                sendLauncherRefresh(context)
+                                            }.onFailure { error ->
+                                                switchError = error.message ?: context.getString(R.string.write_icons_failed)
+                                            }
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                    )
+                })
+            }
+
             val groups = appPackage?.files.orEmpty().groupBy { categoryOf(it.name) }
-            listOf("light", "dark", "monet", "mat", "other").forEach { category ->
+            listOf("monet", "light", "dark", "mat", "other").forEach { category ->
                 if (category != "other" && category !in settings.variants) return@forEach
-                val entries = iconEntries(category, groups[category].orEmpty(), previews)
+                val entries = if (category == "monet" && selectedSource == "native" && nativePreview != null) {
+                    val sizes = groups[category].orEmpty()
+                        .map { Regex("_(1x2|2x1|2x2)").find(it.name)?.groupValues?.get(1) ?: "1x1" }
+                        .distinct()
+                        .ifEmpty { listOf("1x1") }
+                    sizes.map { size -> IconEntry(size, foreground = nativePreview, fileName = "monochrome") }
+                } else iconEntries(category, groups[category].orEmpty(), previews)
                 if (entries.isNotEmpty()) {
                     Text(
                         categoryTitle(category),

@@ -20,6 +20,7 @@ private const val KEY_VARIANTS = "download_variants"
 private const val KEY_THEME = "theme_mode"
 private const val KEY_DYNAMIC = "dynamic_color"
 private const val KEY_AUTO_CHECK_UPDATE = "auto_check_update"
+private const val KEY_MONOCHROME_SOURCES = "monochrome_sources"
 private const val KEY_KEY_COLOR = "key_color"
 private const val KEY_PALETTE_STYLE = "palette_style"
 private const val KEY_COLOR_SPEC = "color_spec"
@@ -108,7 +109,8 @@ data class AppSettings(
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     val predictiveBack: Boolean = true,
-    val autoCheckUpdates: Boolean = true
+    val autoCheckUpdates: Boolean = true,
+    val monochromeSources: Set<String> = emptySet()
 ) {
     val indexUrl: String
         get() = if (channel == CHANNEL_CLOUDFLARE) CLOUDFLARE_INDEX_URL else GITHUB_INDEX_URL
@@ -150,7 +152,8 @@ fun loadAppSettings(context: Context): AppSettings {
             )
         }.getOrDefault(ColorSpec.SpecVersion.SPEC_2025),
         predictiveBack = prefs.getBoolean(KEY_PREDICTIVE_BACK, true),
-        autoCheckUpdates = prefs.getBoolean(KEY_AUTO_CHECK_UPDATE, true)
+        autoCheckUpdates = prefs.getBoolean(KEY_AUTO_CHECK_UPDATE, true),
+        monochromeSources = prefs.getStringSet(KEY_MONOCHROME_SOURCES, emptySet()).orEmpty()
     )
 }
 
@@ -166,6 +169,7 @@ fun saveAppSettings(context: Context, settings: AppSettings) {
             .putString(KEY_COLOR_SPEC, settings.colorSpec.name)
             .putBoolean(KEY_PREDICTIVE_BACK, settings.predictiveBack)
             .putBoolean(KEY_AUTO_CHECK_UPDATE, settings.autoCheckUpdates)
+            .putStringSet(KEY_MONOCHROME_SOURCES, settings.monochromeSources)
     }
 }
 

@@ -10,6 +10,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -193,12 +194,13 @@ private fun MutableList<IconFile>.addFiles(array: org.json.JSONArray?) {
 
 data class IconSyncPlan(
     val updates: List<IconFileUpdate>,
-    val staleFiles: List<String>
+    val staleFiles: List<String>,
+    val moves: List<IconFileMove> = emptyList()
 ) {
-    val totalChanges: Int get() = updates.size + staleFiles.size
+    val totalChanges: Int get() = updates.size + staleFiles.size + moves.size
     val totalBytes: Long get() = updates.sumOf { it.file.size }
     val affectedApps: Int
-        get() = (updates.map { it.packageName } + staleFiles.map {
+        get() = (updates.map { it.packageName } + moves.map { it.packageName } + staleFiles.map {
             it.substringAfter(ICON_STORAGE_ROOT).trimStart('/').substringBefore('/')
         })
             .filter(String::isNotBlank)
@@ -213,6 +215,12 @@ data class IconFileUpdate(
     val size: Long
 )
 
+data class IconFileMove(
+    val packageName: String,
+    val source: String,
+    val target: String
+)
+
 data class IconSyncProgress(
     val completedApps: Int,
     val totalApps: Int,
@@ -224,13 +232,27 @@ data class IconSyncResult(val downloaded: Int, val removed: Int)
 
 fun buildIconSyncPlan(
     installedPackages: Set<String>,
-    index: IconIndexLoadResult
+    index: IconIndexLoadResult,
+    monochromeSources: Set<String> = emptySet(),
+    nativeMonochromePackages: Set<String> = emptySet(),
+    checksums: Map<String, String> = readLocalChecksums()
 ): IconSyncPlan {
     require(index.syncAllowed) { "Icon index is invalid; refusing to plan file changes" }
     val keep = mutableSetOf<String>()
-    val checksums = readLocalChecksums()
+    val moves = mutableListOf<IconFileMove>()
+    var totalBytes = 0L
     val updates = buildList {
-        var totalBytes = 0L
+        fun addPackageFile(packageName: String, file: IconFile, target: String) {
+            check(isSafeIconFileName(file.name)) { "Invalid icon file name" }
+            check(isSafeIconDownloadPath(file.path)) { "Invalid icon download path" }
+            check(file.size in 0..MAX_ICON_FILE_BYTES) { "Invalid icon file size" }
+            keep += target
+            if (checksums[target] != file.sha256) {
+                totalBytes += file.size
+                check(totalBytes <= MAX_TOTAL_DOWNLOAD_BYTES) { "Icon download plan is too large" }
+                add(IconFileUpdate(packageName, file, target, file.size))
+            }
+        }
         for (requiredFile in index.requiredFiles) {
             check(isSafeIconFileName(requiredFile.name)) { "Invalid required icon file name" }
             check(isSafeIconDownloadPath(requiredFile.path)) { "Invalid icon download path" }
@@ -245,21 +267,38 @@ fun buildIconSyncPlan(
         }
         for (packageName in installedPackages.intersect(index.packages.keys)) {
             check(isSafePackageName(packageName)) { "Invalid package name" }
-            for (iconFile in index.packages.getValue(packageName).files) {
-                check(isSafeIconFileName(iconFile.name)) { "Invalid icon file name" }
-                check(isSafeIconDownloadPath(iconFile.path)) { "Invalid icon download path" }
-                check(iconFile.size in 0..MAX_ICON_FILE_BYTES) { "Invalid icon file size" }
-                val target = "$ICON_STORAGE_ROOT/$packageName/${iconFile.name}"
+            val files = index.packages.getValue(packageName).files
+            val downloaded = files.filter { it.name.startsWith("monochrome") }
+            val nativeAvailable = packageName in nativeMonochromePackages
+            val preferNative = "native:$packageName" in monochromeSources
+            val useNative = nativeAvailable && (preferNative || downloaded.isEmpty())
+            for (iconFile in files.filterNot { it.name.startsWith("monochrome") }) {
+                addPackageFile(packageName, iconFile, "$ICON_STORAGE_ROOT/$packageName/${iconFile.name}")
+            }
+            for (iconFile in downloaded) {
+                val normal = "$ICON_STORAGE_ROOT/$packageName/${iconFile.name}"
+                val parked = "$ICON_STORAGE_ROOT/$packageName/${downloadedMonochromeFileName(iconFile.name)}"
+                val target = if (useNative) parked else normal
+                val alternate = if (useNative) normal else parked
                 keep += target
-                if (checksums[target] != iconFile.sha256) {
-                    totalBytes += iconFile.size
-                    check(totalBytes <= MAX_TOTAL_DOWNLOAD_BYTES) { "Icon download plan is too large" }
-                    add(IconFileUpdate(packageName, iconFile, target, iconFile.size))
+                when {
+                    checksums[target] == iconFile.sha256 -> Unit
+                    checksums[alternate] == iconFile.sha256 -> moves += IconFileMove(packageName, alternate, target)
+                    else -> {
+                        totalBytes += iconFile.size
+                        check(totalBytes <= MAX_TOTAL_DOWNLOAD_BYTES) { "Icon download plan is too large" }
+                        add(IconFileUpdate(packageName, iconFile.copy(name = target.substringAfterLast('/')), target, iconFile.size))
+                    }
                 }
             }
+            // The selected source is represented by the active filename; both names use the index hash.
         }
     }
-    return IconSyncPlan(updates, (checksums.keys - keep).toList())
+    return IconSyncPlan(
+        updates,
+        (checksums.keys - keep - moves.mapTo(mutableSetOf()) { it.source }).toList(),
+        moves
+    )
 }
 
 suspend fun syncIconResources(
@@ -269,10 +308,11 @@ suspend fun syncIconResources(
 ): IconSyncResult = coroutineScope {
     validateSyncPlan(plan)
     val updatesByApp = plan.updates.groupBy { it.packageName }
+    val movesByApp = plan.moves.groupBy { it.packageName }
     val staleByApp = plan.staleFiles.groupBy {
         it.substringAfter(ICON_STORAGE_ROOT).trimStart('/').substringBefore('/')
     }
-    val apps = (updatesByApp.keys + staleByApp.keys).filter(String::isNotBlank).distinct()
+    val apps = (updatesByApp.keys + movesByApp.keys + staleByApp.keys).filter(String::isNotBlank).distinct()
     val totalApps = apps.size
     val completedMutex = Mutex()
     var completedApps = 0
@@ -283,11 +323,15 @@ suspend fun syncIconResources(
     val results = apps.map { packageName ->
         async(downloadDispatcher) {
             val updates = updatesByApp[packageName].orEmpty()
+            val moves = movesByApp[packageName].orEmpty()
             val staleFiles = staleByApp[packageName].orEmpty()
             onProgress(IconSyncProgress(completedApps, totalApps, packageName))
             var downloadedForApp = 0
             var removedForApp = 0
 
+            for (move in moves) {
+                moveRootFile(context, move.source, move.target)
+            }
             for (update in updates) {
                 check(isSafePersistentIconPath(update.target)) { "Invalid icon target" }
                 check(isSafePackageName(update.packageName) || update.packageName == REQUIRED_PACKAGE) {
@@ -330,12 +374,17 @@ suspend fun syncIconResources(
     // A failed download must never be followed by deletion of existing icons.
     for (staleFile in plan.staleFiles) {
         check(isSafePersistentIconPath(staleFile)) { "Invalid stale icon path" }
-        check(runRoot(rootFileCommand("rm -f -- ${shellQuote(staleFile)}", staleFile)).first == 0) {
-            context.getString(com.immortal521.colorosiconspatch.R.string.delete_old_icons_failed)
+        val result = runRoot(rootFileCommand("rm -f ${shellQuote(staleFile)}", staleFile))
+        check(result.first == 0) {
+            val output = result.second.trim()
+            context.getString(com.immortal521.colorosiconspatch.R.string.delete_old_icons_failed) +
+                    " (exit ${result.first})" +
+                    output.takeIf { it.isNotEmpty() }?.let { ": $it" }.orEmpty()
         }
     }
     IconSyncResult(results.sumOf { it.downloaded }, plan.staleFiles.size)
 }
+
 
 private const val REQUIRED_PACKAGE = "__required__"
 
@@ -345,12 +394,44 @@ private fun readLocalChecksums(): Map<String, String> {
     )
     if (result.first != 0) return emptyMap()
     return result.second.lineSequence().mapNotNull { line ->
-        val separator = line.indexOf("  ")
-        if (separator <= 0) return@mapNotNull null
-        val checksum = line.substring(0, separator).trim()
-        val path = line.substring(separator + 2).trim()
-        if (checksum.length == 64 && path.isNotEmpty()) path to checksum else null
+        val match = Regex("^([0-9a-fA-F]{64})\\s+(.+)$").matchEntire(line.trim())
+            ?: return@mapNotNull null
+        match.groupValues[2].trim() to match.groupValues[1].lowercase()
     }.toMap()
+}
+
+internal fun moveRootFile(context: Context, source: String, target: String) {
+    check(isSafePersistentIconPath(source) && isSafePersistentIconPath(target)) {
+        "Invalid icon move"
+    }
+    val command = "if [ -f ${shellQuote(source)} ]; then " +
+            "mv -f ${shellQuote(source)} ${shellQuote(target)}; " +
+            "elif [ -f ${shellQuote(target)} ]; then true; " +
+            "else echo 'Missing source: $source' >&2; false; fi"
+    val result = runRoot(command)
+    check(result.first == 0) {
+        val output = result.second.trim()
+        "${context.getString(com.immortal521.colorosiconspatch.R.string.write_icons_failed)} " +
+                "(move $source -> $target, exit ${result.first})" +
+                output.takeIf { it.isNotEmpty() }?.let { ": $it" }.orEmpty()
+    }
+}
+
+suspend fun switchMonochromeFiles(
+    context: Context,
+    packageName: String,
+    files: List<IconFile>,
+    useNative: Boolean
+) = withContext(Dispatchers.IO) {
+    check(isSafePackageName(packageName)) { "Invalid icon package" }
+    for (file in files.filter { it.name.startsWith("monochrome") }) {
+        check(isSafeIconFileName(file.name)) { "Invalid monochrome file name" }
+        val normal = "$ICON_STORAGE_ROOT/$packageName/${activeMonochromeFileName(file.name)}"
+        val parked = "$ICON_STORAGE_ROOT/$packageName/${downloadedMonochromeFileName(file.name)}"
+        val source = if (useNative) normal else parked
+        val target = if (useNative) parked else normal
+        moveRootFile(context, source, target)
+    }
 }
 
 private fun installRootFile(context: Context, source: File, target: String) {
@@ -402,6 +483,14 @@ private fun sha256(file: File): String {
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
 
+internal fun downloadedMonochromeFileName(name: String): String =
+    name.removeSuffix(".png") + "_download.png"
+
+internal fun activeMonochromeFileName(name: String): String =
+    name.removeSuffix("_download.png").let { base ->
+        if (base.endsWith(".png")) base else "$base.png"
+    }
+
 internal fun isSafeIconFileName(value: String): Boolean =
     value.isNotEmpty() && value.length <= 255 &&
             value != "." && value != ".." &&
@@ -435,6 +524,15 @@ internal fun validateSyncPlan(plan: IconSyncPlan) {
         }
     }
     plan.staleFiles.forEach { require(isSafePersistentIconPath(it)) { "Invalid stale icon path" } }
+    plan.moves.forEach { move ->
+        require(isSafePackageName(move.packageName)) { "Invalid icon package" }
+        require(isSafePersistentIconPath(move.source) && isSafePersistentIconPath(move.target)) {
+            "Invalid icon move"
+        }
+        require(move.source.substringBeforeLast('/') == move.target.substringBeforeLast('/')) {
+            "Icon moves must stay in one package directory"
+        }
+    }
 }
 
 private fun rootFileCommand(operation: String, path: String): String {

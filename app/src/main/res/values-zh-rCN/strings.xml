@@ -24,6 +24,11 @@
   <string name="light_icons">浅色图标</string>
   <string name="dark_icons">深色图标</string>
   <string name="monet_icons">莫奈图标</string>
+  <string name="monochrome_use_native">使用应用原生图标</string>
+  <string name="monochrome_switch_summary">在下载的莫奈图标和应用自带的自适应图标之间切换</string>
+  <string name="monochrome_native_only">仅应用自带的自适应图标可用</string>
+  <string name="monochrome_download_only">仅下载的莫奈图标可用</string>
+  <string name="monochrome_unavailable">没有可用的单色图标来源</string>
   <string name="material_icons">质感图标</string>
   <string name="other_icons">杂项图标</string>
   <string name="settings">设置</string>
@@ -74,6 +79,7 @@
   <string name="module_missing_summary">%1$s：图标模块未安装</string>
   <string name="module_enabled">图标模块已安装并启用</string>
   <string name="module_not_enabled">图标模块未启用</string>
+  <string name="lsposed_unavailable">LSPosed 服务不可用</string>
   <string name="xposed_inactive_summary">%1$s：LSPosed 未激活本模块</string>
   <string name="updating_icons">正在更新图标资源</string>
   <string name="preparing">准备中</string>

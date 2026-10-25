@@ -177,11 +177,16 @@ private fun MainPagerScreen(
         }
         installedApps = apps
         syncPlan = withContext(Dispatchers.IO) {
-            buildIconSyncPlan(apps.mapTo(mutableSetOf()) { it.packageName }, index)
+            buildIconSyncPlan(
+                apps.mapTo(mutableSetOf()) { it.packageName },
+                index,
+                appSettings.monochromeSources,
+                apps.filter { it.hasNativeMonochrome }.mapTo(mutableSetOf()) { it.packageName }
+            )
         }
     }
 
-    LaunchedEffect(canReadApps, appSettings.channel, appSettings.variants) {
+    LaunchedEffect(canReadApps, appSettings.channel, appSettings.variants, appSettings.monochromeSources) {
         refreshSyncPlan()
     }
 
@@ -265,7 +270,9 @@ private fun MainPagerScreen(
                                 syncPlan = withContext(Dispatchers.IO) {
                                     buildIconSyncPlan(
                                         apps.mapTo(mutableSetOf()) { it.packageName },
-                                        index
+                                        index,
+                                        appSettings.monochromeSources,
+                                        apps.filter { it.hasNativeMonochrome }.mapTo(mutableSetOf()) { it.packageName }
                                     )
                                 }
                                 LogStore.info(context, "Icon sync completed")

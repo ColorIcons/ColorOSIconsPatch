@@ -36,6 +36,11 @@
     <string name="light_icons">Light icons</string>
     <string name="dark_icons">Dark icons</string>
     <string name="monet_icons">Monet icons</string>
+    <string name="monochrome_use_native">Use app native icon</string>
+    <string name="monochrome_switch_summary">Switch between the downloaded Monet icon and the app adaptive icon</string>
+    <string name="monochrome_native_only">Only the app adaptive icon is available</string>
+    <string name="monochrome_download_only">Only the downloaded Monet icon is available</string>
+    <string name="monochrome_unavailable">No monochrome icon source is available</string>
     <string name="material_icons">Material icons</string>
     <string name="other_icons">Other icons</string>
     <string name="settings">Settings</string>
