@@ -17,7 +17,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
@@ -44,6 +46,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.unit.dp
 import com.immortal521.colorosiconspatch.R
 import com.immortal521.colorosiconspatch.data.AppSettingsState
+import com.immortal521.colorosiconspatch.data.clearCachedIconBitmaps
 import com.immortal521.colorosiconspatch.data.downloadedMonochromeFileName
 import com.immortal521.colorosiconspatch.data.switchMonochromeFiles
 import com.immortal521.colorosiconspatch.data.IconFile
@@ -55,11 +58,15 @@ import com.immortal521.colorosiconspatch.data.sendLauncherRefresh
 import com.immortal521.colorosiconspatch.ui.component.material.LocalListItemShapes
 import com.immortal521.colorosiconspatch.ui.component.material.SegmentedColumn
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppDetailScreen(
     packageName: String,
@@ -71,6 +78,7 @@ fun AppDetailScreen(
     val settings by AppSettingsState.settings.collectAsState()
     val scope = rememberCoroutineScope()
     var appPackage by remember(packageName) { mutableStateOf<IconPackage?>(null) }
+    var loading by remember(packageName) { mutableStateOf(true) }
     var previews by remember(packageName) { mutableStateOf<Map<String, ImageBitmap>>(emptyMap()) }
     var nativePreview by remember(packageName) { mutableStateOf<ImageBitmap?>(null) }
     var switchError by remember(packageName) { mutableStateOf<String?>(null) }
@@ -106,20 +114,31 @@ fun AppDetailScreen(
     }
 
     LaunchedEffect(packageName) {
+        loading = true
         withContext(Dispatchers.IO) {
             val loaded = loadCachedIconPackage(context, packageName)
             appPackage = loaded
             nativePreview = loadNativeMonochrome(context, packageName)?.let { drawable ->
                 drawable.toBitmap(192, 192).asImageBitmap()
             }
-            previews = loaded?.files?.associateNotNull { file ->
-                val preview = loadCachedIconBitmap(context, packageName, file.name)
-                    ?: if (file.name.startsWith("monochrome")) {
-                        loadCachedIconBitmap(context, packageName, downloadedMonochromeFileName(file.name))
-                    } else null
-                preview?.let { file.name to it }
-            }.orEmpty()
+            val previewDispatcher = Dispatchers.IO.limitedParallelism(4)
+            previews = coroutineScope {
+                loaded?.files.orEmpty().map { file ->
+                    async(previewDispatcher) {
+                        val preview = loadCachedIconBitmap(context, packageName, file.name)
+                            ?: if (file.name.startsWith("monochrome")) {
+                                loadCachedIconBitmap(
+                                    context,
+                                    packageName,
+                                    downloadedMonochromeFileName(file.name)
+                                )
+                            } else null
+                        preview?.let { file.name to it }
+                    }
+                }.awaitAll().filterNotNull().toMap()
+            }
         }
+        loading = false
     }
 
     MainScreenScaffold(
@@ -181,6 +200,7 @@ fun AppDetailScreen(
                                                             .toSet() + if (enabled) "native:$packageName" else packageName
                                                     )
                                                 }
+                                                clearCachedIconBitmaps(packageName)
                                                 sendLauncherRefresh(context)
                                             }.onFailure { error ->
                                                 switchError = error.message ?: context.getString(R.string.write_icons_failed)
@@ -226,7 +246,11 @@ fun AppDetailScreen(
                     }
                 }
             }
-            if (appPackage == null) {
+            if (loading) {
+                LoadingIndicator(
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            } else if (appPackage == null) {
                 Text(
                     stringResource(R.string.no_icons),
                     color = MaterialTheme.colorScheme.onSurfaceVariant

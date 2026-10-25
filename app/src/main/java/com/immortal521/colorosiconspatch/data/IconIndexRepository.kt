@@ -15,6 +15,7 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 
 private const val DEFAULT_INDEX_URL = GITHUB_INDEX_URL
 private const val INDEX_CACHE = "icon-index.json"
@@ -47,7 +48,11 @@ fun loadCachedIconPackage(context: Context, packageName: String): IconPackage? {
     }.getOrNull()
 }
 
+private val iconPreviewCache = ConcurrentHashMap<String, ImageBitmap>()
+
 fun loadCachedIconBitmap(context: Context, packageName: String, fileName: String): ImageBitmap? {
+    val cacheKey = "$packageName/$fileName"
+    iconPreviewCache[cacheKey]?.let { return it }
     val target = "$ICON_STORAGE_ROOT/$packageName/$fileName"
     val cached = File.createTempFile("icon-preview-", ".png", context.cacheDir)
     return try {
@@ -55,9 +60,19 @@ fun loadCachedIconBitmap(context: Context, packageName: String, fileName: String
             "cp ${shellQuote(target)} ${shellQuote(cached.absolutePath)}"
         ).exec()
         if (!result.isSuccess) return null
-        BitmapFactory.decodeFile(cached.absolutePath)?.asImageBitmap()
+        BitmapFactory.decodeFile(cached.absolutePath)?.asImageBitmap()?.also {
+            iconPreviewCache[cacheKey] = it
+        }
     } finally {
         cached.delete()
+    }
+}
+
+fun clearCachedIconBitmaps(packageName: String? = null) {
+    if (packageName == null) {
+        iconPreviewCache.clear()
+    } else {
+        iconPreviewCache.keys.removeIf { it.startsWith("$packageName/") }
     }
 }
 
@@ -325,6 +340,9 @@ suspend fun syncIconResources(
             val updates = updatesByApp[packageName].orEmpty()
             val moves = movesByApp[packageName].orEmpty()
             val staleFiles = staleByApp[packageName].orEmpty()
+            if (moves.isNotEmpty() || updates.isNotEmpty() || staleFiles.isNotEmpty()) {
+                clearCachedIconBitmaps(packageName)
+            }
             onProgress(IconSyncProgress(completedApps, totalApps, packageName))
             var downloadedForApp = 0
             var removedForApp = 0

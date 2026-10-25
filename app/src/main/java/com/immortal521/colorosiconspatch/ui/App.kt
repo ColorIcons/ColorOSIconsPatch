@@ -35,6 +35,7 @@ import com.immortal521.colorosiconspatch.data.LogStore
 import com.immortal521.colorosiconspatch.data.PackageChangeReceiver
 import com.immortal521.colorosiconspatch.data.buildIconSyncPlan
 import com.immortal521.colorosiconspatch.data.canReadInstalledApps
+import com.immortal521.colorosiconspatch.data.clearInstalledAppCaches
 import com.immortal521.colorosiconspatch.data.loadIconIndex
 import com.immortal521.colorosiconspatch.data.loadInstalledApps
 import com.immortal521.colorosiconspatch.data.sendLauncherRefresh
@@ -194,6 +195,7 @@ private fun MainPagerScreen(
         val receiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(receiverContext: Context, intent: android.content.Intent) {
                 if (intent.action == PackageChangeReceiver.ACTION_PACKAGE_SET_CHANGED) {
+                    clearInstalledAppCaches()
                     pagerScope.launch { refreshSyncPlan() }
                 }
             }
