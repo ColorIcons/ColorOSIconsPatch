@@ -250,7 +250,7 @@ fun AppDetailScreen(
                 LoadingIndicator(
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
-            } else if (appPackage == null) {
+            } else if (appPackage == null && nativePreview == null) {
                 Text(
                     stringResource(R.string.no_icons),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
