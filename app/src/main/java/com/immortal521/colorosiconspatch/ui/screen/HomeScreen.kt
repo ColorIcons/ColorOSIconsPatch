@@ -89,7 +89,7 @@ fun HomeScreen(
     val xposedStatus = if (xposedAvailable) {
         CheckStatus.PASSED
     } else {
-        CheckStatus.FAILED
+        environment.xposed
     }
     val androidVersion =
         stringResource(R.string.android_version, Build.VERSION.RELEASE, Build.VERSION.SDK_INT)
@@ -199,18 +199,18 @@ private fun RootStatusCard(
     val ready = root == CheckStatus.PASSED &&
             module == CheckStatus.PASSED &&
             xposed == CheckStatus.PASSED
-    val containerColor = if (ready) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        MaterialTheme.colorScheme.errorContainer
-    }
-    val contentColor = MaterialTheme.colorScheme.contentColorFor(containerColor)
     val checking = root == CheckStatus.UNKNOWN ||
             module == CheckStatus.UNKNOWN ||
             xposed == CheckStatus.UNKNOWN ||
             root == CheckStatus.CHECKING ||
             module == CheckStatus.CHECKING ||
             xposed == CheckStatus.CHECKING
+    val containerColor = when {
+        ready -> MaterialTheme.colorScheme.secondaryContainer
+        checking -> MaterialTheme.colorScheme.surfaceContainerHighest
+        else -> MaterialTheme.colorScheme.errorContainer
+    }
+    val contentColor = MaterialTheme.colorScheme.contentColorFor(containerColor)
     val icon = when {
         ready -> Icons.Rounded.CheckCircle
         checking -> Icons.Rounded.Warning
